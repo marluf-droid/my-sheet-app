@@ -26,7 +26,7 @@ st.markdown("""
 @st.cache_resource
 def get_gspread_client():
     scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
-    # Secrets থেকে স্ট্রিং ডাটা নিয়ে JSON এ রূপান্তর করা হচ্ছে
+    creds_info = json.loads(st.secrets["JSON_KEY"]
     creds_info = json.loads(st.secrets["JSON_KEY"])
     creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_info, scope)
     return gspread.authorize(creds)
@@ -130,3 +130,4 @@ try:
 
 except Exception as e:
     st.error(f"Error loading dashboard: {e}")
+
