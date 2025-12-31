@@ -4,8 +4,9 @@ import gspread
 from oauth2client.service_account import ServiceAccountCredentials
 import plotly.express as px
 from datetime import datetime
+import json
 
-# --- ১. পেজ সেটআপ ও ডিজাইন ---
+# ১. পেজ সেটআপ
 st.set_page_config(page_title="Performance Analytics 2025", layout="wide")
 
 st.markdown("""
@@ -21,13 +22,13 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
-# --- ২. ডাটা কানেকশন (Streamlit Secrets ব্যবহার করে) ---
+# ২. ডাটা কানেকশন (Streamlit Secrets থেকে ডাটা নেওয়া)
 @st.cache_resource
 def get_gspread_client():
     scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
-    # সরাসরি Streamlit Dashboard এর Secrets থেকে ডাটা নেওয়া হবে
-    creds_dict = st.secrets["gcp_service_account"]
-    creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
+    # Secrets থেকে স্ট্রিং ডাটা নিয়ে JSON এ রূপান্তর করা হচ্ছে
+    creds_info = json.loads(st.secrets["JSON_KEY"])
+    creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_info, scope)
     return gspread.authorize(creds)
 
 @st.cache_data(ttl=600)
@@ -47,7 +48,7 @@ def get_data():
 try:
     df_raw = get_data()
 
-    # --- ৩. সাইডবার ফিল্টারস ---
+    # --- সাইডবার ফিল্টারস ---
     st.sidebar.title("Global Filters")
     start_date = st.sidebar.date_input("Start Date", df_raw['date'].min())
     end_date = st.sidebar.date_input("End Date", df_raw['date'].max())
@@ -57,6 +58,7 @@ try:
     emp_type_selected = st.sidebar.selectbox("Employee Type", ["All"] + sorted(df_raw['Employee Type'].unique().tolist()))
     product_selected = st.sidebar.selectbox("Product Type Filter", ["All", "Floorplan Queue", "Measurement Queue", "Autocad Queue", "Rework", "Urban Angles", "Van Bree Media"])
 
+    # ফিল্টারিং লজিক
     mask = (df_raw['date'].dt.date >= start_date) & (df_raw['date'].dt.date <= end_date)
     if team_selected != "All": mask &= (df_raw['Team'] == team_selected)
     if shift_selected != "All": mask &= (df_raw['Shift'] == shift_selected)
@@ -73,14 +75,14 @@ try:
     artist_selected = st.sidebar.selectbox("Select Log Name (Artist/QC)", ["Default (Top)"] + sorted(df['Name'].unique().tolist()))
     final_artist = default_artist if artist_selected == "Default (Top)" else artist_selected
 
-    # --- ৪. মেইন ড্যাশবোর্ড ---
+    # --- মেইন ড্যাশবোর্ড ---
     st.title("📊 PERFORMANCE ANALYTICS 2025")
     
     def get_avg(p_name):
         subset = df[df['Product'] == p_name]
         return round(subset['Time'].mean(), 2) if not subset.empty else 0.0
 
-    # উপরের কার্ডগুলো
+    # কার্ড লেআউট
     c1, c2, c3, c4, c5, c6, c7 = st.columns(7)
     with c1: st.markdown(f'<div class="metric-card fp-card">FP AVG<br><h2>{get_avg("Floorplan Queue")}</h2></div>', unsafe_allow_html=True)
     with c2: st.markdown(f'<div class="metric-card mrp-card">MRP AVG<br><h2>{get_avg("Measurement Queue")}</h2></div>', unsafe_allow_html=True)
@@ -124,7 +126,7 @@ try:
             if 'date' in detail_t.columns: detail_t['date'] = detail_t['date'].dt.strftime('%m/%d/%Y')
             detail_t.columns = ['Date', 'Order ID', 'Product', 'SQM', 'Floor', 'Labels', 'Time']
             st.dataframe(detail_t, use_container_width=True, hide_index=True)
-        else: st.info("No data found for this selection.")
+        else: st.info("No data found.")
 
 except Exception as e:
     st.error(f"Error loading dashboard: {e}")
