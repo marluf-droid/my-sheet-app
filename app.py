@@ -24,9 +24,10 @@ st.markdown("""
 
 # ২. ডাটা কানেকশন (Streamlit Secrets থেকে ডাটা নেওয়া)
 @st.cache_resource
+@st.cache_resource
 def get_gspread_client():
     scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
-    creds_info = json.loads(st.secrets["JSON_KEY"]
+    # Secrets থেকে ডাটা নিয়ে JSON এ রূপান্তর
     creds_info = json.loads(st.secrets["JSON_KEY"])
     creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_info, scope)
     return gspread.authorize(creds)
@@ -130,4 +131,5 @@ try:
 
 except Exception as e:
     st.error(f"Error loading dashboard: {e}")
+
 
