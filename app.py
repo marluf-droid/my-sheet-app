@@ -6,7 +6,7 @@ import plotly.express as px
 from datetime import datetime
 import json
 
-# ১. পেজ সেটআপ
+# --- ১. পেজ সেটআপ ও ডিজাইন ---
 st.set_page_config(page_title="Performance Analytics 2025", layout="wide")
 
 st.markdown("""
@@ -22,21 +22,11 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
-# ২. ডাটা কানেকশন (Streamlit Secrets থেকে ডাটা নেওয়া)
+# --- ২. ডাটা কানেকশন (Streamlit Secrets) ---
 @st.cache_resource
 def get_gspread_client():
     scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
-    # Secrets থেকে JSON_KEY পড়ে JSON-এ রূপান্তর করা হচ্ছে
     creds_info = json.loads(st.secrets["JSON_KEY"])
-    creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_info, scope)
-    return gspread.authorize(creds)
-    creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
-    return gspread.authorize(creds)
-    creds_dict = dict(st.secrets["gcp_service_account"])
-    # private_key এর ভেতরের \n ঠিক করা
-    creds_dict["private_key"] = creds_dict["private_key"].replace("\\n", "\n")
-    creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
-    return gspread.authorize(creds)
     creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_info, scope)
     return gspread.authorize(creds)
 
@@ -46,102 +36,127 @@ def get_data():
     sheet_id = "1e-3jYxjPkXuxkAuSJaIJ6jXU0RT1LemY6bBQbCTX_6Y"
     spreadsheet = client.open_by_key(sheet_id)
     df = pd.DataFrame(spreadsheet.worksheet("DATA").get_all_records())
-    
-    # ডাটা ক্লিনিং
+    df.columns = [c.strip() for c in df.columns]
     df['date'] = pd.to_datetime(df['date'], errors='coerce')
     df['Time'] = pd.to_numeric(df['Time'], errors='coerce').fillna(0)
     df['SQM'] = pd.to_numeric(df['SQM'], errors='coerce').fillna(0)
-    df.columns = [c.strip() for c in df.columns]
     return df
 
 try:
     df_raw = get_data()
 
-    # --- সাইডবার ফিল্টারস ---
+    # --- ৩. সাইডবার ন্যাভিগেশন ও গ্লোবাল ফিল্টার ---
+    st.sidebar.title("Navigation")
+    page = st.sidebar.radio("Go to", ["Main Dashboard", "Performance Tracking"])
+
+    st.sidebar.markdown("---")
     st.sidebar.title("Global Filters")
     start_date = st.sidebar.date_input("Start Date", df_raw['date'].min())
     end_date = st.sidebar.date_input("End Date", df_raw['date'].max())
     
-    team_selected = st.sidebar.selectbox("Team Name", ["All"] + sorted(df_raw['Team'].unique().tolist()))
+    team_list = ["All"] + sorted(df_raw['Team'].unique().tolist())
+    team_selected = st.sidebar.selectbox("Team Name", team_list)
+    
     shift_selected = st.sidebar.selectbox("Shift", ["All"] + sorted(df_raw['Shift'].unique().tolist()))
-    emp_type_selected = st.sidebar.selectbox("Employee Type", ["All"] + sorted(df_raw['Employee Type'].unique().tolist()))
-    product_selected = st.sidebar.selectbox("Product Type Filter", ["All", "Floorplan Queue", "Measurement Queue", "Autocad Queue", "Rework", "Urban Angles", "Van Bree Media"])
-
-    # ফিল্টারিং লজিক
+    emp_type_selected = st.sidebar.selectbox("Employee Type", ["All", "Artist", "QC"])
+    
+    # ডাটা ফিল্টারিং লজিক
     mask = (df_raw['date'].dt.date >= start_date) & (df_raw['date'].dt.date <= end_date)
     if team_selected != "All": mask &= (df_raw['Team'] == team_selected)
     if shift_selected != "All": mask &= (df_raw['Shift'] == shift_selected)
     if emp_type_selected != "All": mask &= (df_raw['Employee Type'] == emp_type_selected)
-    if product_selected != "All": mask &= (df_raw['Product'] == product_selected)
     df = df_raw[mask]
 
-    # টপ আর্টিস্ট লজিক
-    if not df.empty:
-        top_perf = df.groupby('Name').agg({'Ticket ID':'count', 'Time':'sum'}).sort_values(by=['Ticket ID', 'Time'], ascending=False)
-        default_artist = top_perf.index[0]
-    else: default_artist = "None"
-
-    artist_selected = st.sidebar.selectbox("Select Log Name (Artist/QC)", ["Default (Top)"] + sorted(df['Name'].unique().tolist()))
-    final_artist = default_artist if artist_selected == "Default (Top)" else artist_selected
-
-    # --- মেইন ড্যাশবোর্ড ---
-    st.title("📊 PERFORMANCE ANALYTICS 2025")
-    
-    def get_avg(p_name):
-        subset = df[df['Product'] == p_name]
-        return round(subset['Time'].mean(), 2) if not subset.empty else 0.0
-
-    # কার্ড লেআউট
-    c1, c2, c3, c4, c5, c6, c7 = st.columns(7)
-    with c1: st.markdown(f'<div class="metric-card fp-card">FP AVG<br><h2>{get_avg("Floorplan Queue")}</h2></div>', unsafe_allow_html=True)
-    with c2: st.markdown(f'<div class="metric-card mrp-card">MRP AVG<br><h2>{get_avg("Measurement Queue")}</h2></div>', unsafe_allow_html=True)
-    with c3: st.markdown(f'<div class="metric-card cad-card">CAD AVG<br><h2>{get_avg("Autocad Queue")}</h2></div>', unsafe_allow_html=True)
-    with c4: st.markdown(f'<div class="metric-card rework-card">Rework<br><h2>{get_avg("Rework")}</h2></div>', unsafe_allow_html=True)
-    with c5: st.markdown(f'<div class="metric-card ua-card">UA AVG<br><h2>{get_avg("Urban Angles")}</h2></div>', unsafe_allow_html=True)
-    with c6: st.markdown(f'<div class="metric-card vanbree-card">Van Bree<br><h2>{get_avg("Van Bree Media")}</h2></div>', unsafe_allow_html=True)
-    with c7: st.markdown(f'<div class="metric-card total-card">Total Order<br><h2>{len(df)}</h2></div>', unsafe_allow_html=True)
-
-    st.markdown("<br>", unsafe_allow_html=True)
-    col_left, col_right = st.columns([1.5, 1])
-
-    with col_left:
-        st.subheader("Team Summary")
-        team_sum = df.groupby(['Team', 'Shift']).agg(
-            Present=('Name', 'nunique'),
-            Total_Orders=('Ticket ID', 'count'),
-            Total_Time=('Time', 'sum'),
-            CAD=('Product', lambda x: (x == 'Autocad Queue').sum()),
-            UA=('Product', lambda x: (x == 'Urban Angles').sum())
-        ).reset_index()
-        st.dataframe(team_sum, use_container_width=True, hide_index=True)
+    # --- ৪. পেজ ১: মেইন ড্যাশবোর্ড ---
+    if page == "Main Dashboard":
+        st.title("📊 PERFORMANCE ANALYTICS 2025")
         
-        st.subheader("Performance Breakdown Section")
-        st.dataframe(df.head(200), use_container_width=True, hide_index=True)
+        def get_avg(p_name):
+            subset = df[df['Product'] == p_name]
+            return round(subset['Time'].mean(), 2) if not subset.empty else 0.0
 
-    with col_right:
-        st.subheader(f"Stats: {final_artist}")
-        artist_df = df[df['Name'] == final_artist]
-        if not artist_df.empty:
-            pie_data = artist_df['Product'].value_counts().reset_index()
-            pie_data.columns = ['Product', 'Count']
-            fig = px.pie(pie_data, values='Count', names='Product', hole=0.5, height=350)
-            fig.update_traces(textinfo='value+label')
-            st.plotly_chart(fig, use_container_width=True)
-            
-            st.subheader("Individual Performance Detail")
-            cols_to_show = ['date', 'Ticket ID', 'Product', 'SQM', 'Floor', 'Labels', 'Time']
-            existing_cols = [c for c in cols_to_show if c in artist_df.columns]
-            detail_t = artist_df[existing_cols].copy()
-            if 'date' in detail_t.columns: detail_t['date'] = detail_t['date'].dt.strftime('%m/%d/%Y')
-            detail_t.columns = ['Date', 'Order ID', 'Product', 'SQM', 'Floor', 'Labels', 'Time']
-            st.dataframe(detail_t, use_container_width=True, hide_index=True)
-        else: st.info("No data found.")
+        c1, c2, c3, c4, c5, c6, c7 = st.columns(7)
+        with c1: st.markdown(f'<div class="metric-card fp-card">FP AVG<br><h2>{get_avg("Floorplan Queue")}</h2></div>', unsafe_allow_html=True)
+        with c2: st.markdown(f'<div class="metric-card mrp-card">MRP AVG<br><h2>{get_avg("Measurement Queue")}</h2></div>', unsafe_allow_html=True)
+        with c3: st.markdown(f'<div class="metric-card cad-card">CAD AVG<br><h2>{get_avg("Autocad Queue")}</h2></div>', unsafe_allow_html=True)
+        with c4: st.markdown(f'<div class="metric-card rework-card">Rework<br><h2>{get_avg("Rework")}</h2></div>', unsafe_allow_html=True)
+        with c5: st.markdown(f'<div class="metric-card ua-card">UA AVG<br><h2>{get_avg("Urban Angles")}</h2></div>', unsafe_allow_html=True)
+        with c6: st.markdown(f'<div class="metric-card vanbree-card">Van Bree<br><h2>{get_avg("Van Bree Media")}</h2></div>', unsafe_allow_html=True)
+        with c7: st.markdown(f'<div class="metric-card total-card">Total Order<br><h2>{len(df)}</h2></div>', unsafe_allow_html=True)
+
+        st.markdown("<br>", unsafe_allow_html=True)
+        col_left, col_right = st.columns([1.6, 1])
+
+        with col_left:
+            st.subheader("Team Summary")
+            team_sum = df.groupby(['Team', 'Shift']).agg(
+                Present=('Name', 'nunique'), Orders=('Ticket ID', 'count'), Time=('Time', 'sum'),
+                CAD=('Product', lambda x: (x == 'Autocad Queue').sum()), UA=('Product', lambda x: (x == 'Urban Angles').sum())
+            ).reset_index()
+            st.dataframe(team_sum, use_container_width=True, hide_index=True)
+            st.subheader("Performance Breakdown Section")
+            st.dataframe(df.head(200), use_container_width=True, hide_index=True)
+
+        with col_right:
+            top_artist = df.groupby('Name')['Ticket ID'].count().sort_values(ascending=False).index[0] if not df.empty else "None"
+            artist_selected = st.selectbox("Select Artist Detail", sorted(df['Name'].unique().tolist()), index=0 if top_artist in df['Name'].values else 0)
+            artist_df = df[df['Name'] == artist_selected]
+            if not artist_df.empty:
+                st.subheader(f"Stats: {artist_selected}")
+                fig = px.pie(artist_df, values='Ticket ID', names='Product', hole=0.5, height=350)
+                fig.update_traces(textinfo='value+label')
+                st.plotly_chart(fig, use_container_width=True)
+                st.subheader("Artist Detail")
+                st.dataframe(artist_df[['date', 'Ticket ID', 'Product', 'SQM', 'Time']], use_container_width=True, hide_index=True)
+
+    # --- ৫. পেজ ২: পারফরম্যান্স ট্র্যাকিং (আপনার QUERY ফর্মুলা অনুযায়ী) ---
+    elif page == "Performance Tracking":
+        st.title("🎯 PERFORMANCE TRACKING")
+        
+        # ট্র্যাকিংয়ের জন্য আলাদা ফিল্টার (Product Type)
+        prod_list = ["All"] + sorted(df_raw['Product'].unique().tolist())
+        tracking_prod = st.selectbox("Product Type Filter", prod_list)
+        criteria = st.selectbox("Criteria Selection", ["All", "Short IP", "Spending More Time", "High Time vs SQM"])
+
+        # ডাটা তৈরি
+        tdf = df.copy()
+        if tracking_prod != "All": tdf = tdf[tdf['Product'] == tracking_prod]
+
+        # জটিল কন্ডিশন মাস্কিং
+        short_ip_mask = (
+            ((tdf['Employee Type'] == 'QC') & (tdf['Time'] < 2)) |
+            ((tdf['Employee Type'] == 'Artist') & (
+                ((tdf['Product'] == 'Floorplan Queue') & (tdf['Time'] <= 15)) |
+                ((tdf['Product'] == 'Measurement Queue') & (tdf['Time'] < 5)) |
+                (~tdf['Product'].isin(['Floorplan Queue', 'Measurement Queue']) & (tdf['Time'] <= 10))
+            ))
+        )
+
+        spending_more_mask = (
+            ((tdf['Employee Type'] == 'QC') & (tdf['Time'] > 20)) |
+            ((tdf['Employee Type'] == 'Artist') & (
+                (tdf['Time'] >= 150) | 
+                ((tdf['Product'] == 'Measurement Queue') & (tdf['Time'] > 40))
+            ))
+        )
+
+        high_time_sqm_mask = (tdf['Time'] > (tdf['SQM'] + 15)) & ~spending_more_mask
+
+        # ফিল্টার প্রয়োগ
+        if criteria == "Short IP": tdf = tdf[short_ip_mask]
+        elif criteria == "Spending More Time": tdf = tdf[spending_more_mask]
+        elif criteria == "High Time vs SQM": tdf = tdf[high_time_sqm_mask]
+
+        # ট্র্যাকিং মেট্রিকস (আপনার স্ক্রিনশটের মতো)
+        tk1, tk2, tk3, tk4 = st.columns(4)
+        tk1.metric("Total Order", len(tdf))
+        tk2.metric("Avg. Time FP", round(tdf[tdf['Product']=='Floorplan Queue']['Time'].mean(), 1) if not tdf[tdf['Product']=='Floorplan Queue'].empty else 0)
+        tk3.metric("Avg. Time MRP", round(tdf[tdf['Product']=='Measurement Queue']['Time'].mean(), 1) if not tdf[tdf['Product']=='Measurement Queue'].empty else 0)
+        tk4.metric("Labels Found", tdf['Labels'].nunique() if 'Labels' in tdf.columns else 0)
+
+        st.markdown("---")
+        st.write(f"Results for **{criteria}**: {len(tdf)} items found.")
+        st.dataframe(tdf, use_container_width=True, hide_index=True)
 
 except Exception as e:
-    st.error(f"Error loading dashboard: {e}")
-
-
-
-
-
-
+    st.error(f"Error: {e}")
