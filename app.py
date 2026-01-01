@@ -9,6 +9,7 @@ import json
 # --- ১. পেজ সেটআপ ও ডিজাইন ---
 st.set_page_config(page_title="Performance Analytics 2025", layout="wide")
 
+# কালারফুল কার্ডের জন্য CSS
 st.markdown("""
     <style>
     .metric-card { padding: 15px; border-radius: 8px; text-align: center; color: #333; font-weight: bold; margin-bottom: 10px; }
@@ -45,29 +46,31 @@ def get_data():
 try:
     df_raw = get_data()
 
-    # --- ৩. সাইডবার ন্যাভিগেশন ও গ্লোবাল ফিল্টার ---
-    st.sidebar.title("Navigation")
-    page = st.sidebar.radio("Go to", ["Main Dashboard", "Performance Tracking"])
+    # --- ৩. সাইডবার ন্যাভিগেশন (এটি আপনার missing ছিল) ---
+    st.sidebar.markdown("# 🧭 Navigation")
+    page = st.sidebar.radio("Select Dashboard", ["Main Dashboard", "Performance Tracking"])
 
     st.sidebar.markdown("---")
-    st.sidebar.title("Global Filters")
+    st.sidebar.markdown("# 🔍 Global Filters")
+    
     start_date = st.sidebar.date_input("Start Date", df_raw['date'].min())
     end_date = st.sidebar.date_input("End Date", df_raw['date'].max())
     
     team_list = ["All"] + sorted(df_raw['Team'].unique().tolist())
     team_selected = st.sidebar.selectbox("Team Name", team_list)
-    
     shift_selected = st.sidebar.selectbox("Shift", ["All"] + sorted(df_raw['Shift'].unique().tolist()))
     emp_type_selected = st.sidebar.selectbox("Employee Type", ["All", "Artist", "QC"])
-    
-    # ডাটা ফিল্টারিং লজিক
+    product_selected = st.sidebar.selectbox("Product Type Filter", ["All", "Floorplan Queue", "Measurement Queue", "Autocad Queue", "Rework", "Urban Angles", "Van Bree Media"])
+
+    # ডাটা ফিল্টারিং
     mask = (df_raw['date'].dt.date >= start_date) & (df_raw['date'].dt.date <= end_date)
     if team_selected != "All": mask &= (df_raw['Team'] == team_selected)
     if shift_selected != "All": mask &= (df_raw['Shift'] == shift_selected)
     if emp_type_selected != "All": mask &= (df_raw['Employee Type'] == emp_type_selected)
+    if product_selected != "All": mask &= (df_raw['Product'] == product_selected)
     df = df_raw[mask]
 
-    # --- ৪. পেজ ১: মেইন ড্যাশবোর্ড ---
+    # --- ৪. মেইন ড্যাশবোর্ড পেজ ---
     if page == "Main Dashboard":
         st.title("📊 PERFORMANCE ANALYTICS 2025")
         
@@ -106,57 +109,31 @@ try:
                 fig = px.pie(artist_df, values='Ticket ID', names='Product', hole=0.5, height=350)
                 fig.update_traces(textinfo='value+label')
                 st.plotly_chart(fig, use_container_width=True)
-                st.subheader("Artist Detail")
+                st.subheader("Artist Performance Detail")
                 st.dataframe(artist_df[['date', 'Ticket ID', 'Product', 'SQM', 'Time']], use_container_width=True, hide_index=True)
 
-    # --- ৫. পেজ ২: পারফরম্যান্স ট্র্যাকিং (আপনার QUERY ফর্মুলা অনুযায়ী) ---
+    # --- ৫. পারফরম্যান্স ট্র্যাকিং পেজ ---
     elif page == "Performance Tracking":
         st.title("🎯 PERFORMANCE TRACKING")
-        
-        # ট্র্যাকিংয়ের জন্য আলাদা ফিল্টার (Product Type)
-        prod_list = ["All"] + sorted(df_raw['Product'].unique().tolist())
-        tracking_prod = st.selectbox("Product Type Filter", prod_list)
         criteria = st.selectbox("Criteria Selection", ["All", "Short IP", "Spending More Time", "High Time vs SQM"])
-
-        # ডাটা তৈরি
+        
         tdf = df.copy()
-        if tracking_prod != "All": tdf = tdf[tdf['Product'] == tracking_prod]
-
-        # জটিল কন্ডিশন মাস্কিং
-        short_ip_mask = (
-            ((tdf['Employee Type'] == 'QC') & (tdf['Time'] < 2)) |
-            ((tdf['Employee Type'] == 'Artist') & (
-                ((tdf['Product'] == 'Floorplan Queue') & (tdf['Time'] <= 15)) |
-                ((tdf['Product'] == 'Measurement Queue') & (tdf['Time'] < 5)) |
-                (~tdf['Product'].isin(['Floorplan Queue', 'Measurement Queue']) & (tdf['Time'] <= 10))
-            ))
-        )
-
-        spending_more_mask = (
-            ((tdf['Employee Type'] == 'QC') & (tdf['Time'] > 20)) |
-            ((tdf['Employee Type'] == 'Artist') & (
-                (tdf['Time'] >= 150) | 
-                ((tdf['Product'] == 'Measurement Queue') & (tdf['Time'] > 40))
-            ))
-        )
-
+        short_ip_mask = (((tdf['Employee Type'] == 'QC') & (tdf['Time'] < 2)) | ((tdf['Employee Type'] == 'Artist') & (((tdf['Product'] == 'Floorplan Queue') & (tdf['Time'] <= 15)) | ((tdf['Product'] == 'Measurement Queue') & (tdf['Time'] < 5)) | (~tdf['Product'].isin(['Floorplan Queue', 'Measurement Queue']) & (tdf['Time'] <= 10)))))
+        spending_more_mask = (((tdf['Employee Type'] == 'QC') & (tdf['Time'] > 20)) | ((tdf['Employee Type'] == 'Artist') & ((tdf['Time'] >= 150) | ((tdf['Product'] == 'Measurement Queue') & (tdf['Time'] > 40)))))
         high_time_sqm_mask = (tdf['Time'] > (tdf['SQM'] + 15)) & ~spending_more_mask
 
-        # ফিল্টার প্রয়োগ
         if criteria == "Short IP": tdf = tdf[short_ip_mask]
         elif criteria == "Spending More Time": tdf = tdf[spending_more_mask]
         elif criteria == "High Time vs SQM": tdf = tdf[high_time_sqm_mask]
 
-        # ট্র্যাকিং মেট্রিকস (আপনার স্ক্রিনশটের মতো)
         tk1, tk2, tk3, tk4 = st.columns(4)
         tk1.metric("Total Order", len(tdf))
         tk2.metric("Avg. Time FP", round(tdf[tdf['Product']=='Floorplan Queue']['Time'].mean(), 1) if not tdf[tdf['Product']=='Floorplan Queue'].empty else 0)
         tk3.metric("Avg. Time MRP", round(tdf[tdf['Product']=='Measurement Queue']['Time'].mean(), 1) if not tdf[tdf['Product']=='Measurement Queue'].empty else 0)
-        tk4.metric("Labels Found", tdf['Labels'].nunique() if 'Labels' in tdf.columns else 0)
+        tk4.metric("Unique Artists", tdf['Name'].nunique())
 
         st.markdown("---")
-        st.write(f"Results for **{criteria}**: {len(tdf)} items found.")
         st.dataframe(tdf, use_container_width=True, hide_index=True)
 
 except Exception as e:
-    st.error(f"Error: {e}")
+    st.error(f"Error loading dashboard: {e}")
