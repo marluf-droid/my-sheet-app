@@ -26,10 +26,10 @@ st.markdown("""
 @st.cache_resource
 def get_gspread_client():
     scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
-    # সরাসরি secrets থেকে ডিকশনারি নেওয়া হচ্ছে
-    creds_dict = dict(st.secrets["gcp_service_account"])
-    # private_key এর ভেতরের \n ঠিক করা
-    creds_dict["private_key"] = creds_dict["private_key"].replace("\\n", "\n")
+    # Secrets থেকে JSON_KEY পড়ে JSON-এ রূপান্তর করা হচ্ছে
+    creds_info = json.loads(st.secrets["JSON_KEY"])
+    creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_info, scope)
+    return gspread.authorize(creds)
     creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
     return gspread.authorize(creds)
     creds_dict = dict(st.secrets["gcp_service_account"])
@@ -139,6 +139,7 @@ try:
 
 except Exception as e:
     st.error(f"Error loading dashboard: {e}")
+
 
 
 
