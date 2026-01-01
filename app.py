@@ -5,19 +5,23 @@ from oauth2client.service_account import ServiceAccountCredentials
 import plotly.express as px
 import json
 
-# --- ১. পেজ সেটিংস ও ডিজাইন লক করা (আইকন হাইড লজিকসহ) ---
-st.set_page_config(page_title="Performance Analytics 2025", layout="wide")
+# --- ১. পেজ সেটিংস ও স্মার্ট ডিজাইন (ন্যাভিগেশন বাটনটি রেখে বাকি সব হাইড) ---
+st.set_page_config(
+    page_title="Performance Analytics 2025", 
+    layout="wide",
+    initial_sidebar_state="expanded" # অ্যাপ ওপেন হওয়ার সময় সাইডবারটি খোলা থাকবে
+)
 
 st.markdown("""
     <style>
-    /* মেনু ও আইকন হাইড করা */
-    #MainMenu {visibility: hidden;}
-    header {visibility: hidden;}
-    footer {visibility: hidden;}
-    div[data-testid="stToolbar"] {visibility: hidden; display: none !important;}
-    div[data-testid="stDecoration"] {display: none !important;}
+    /* ১. শুধুমাত্র ডিপ্লয় বাটন এবং গিটহাব আইকন হাইড করা */
     .stDeployButton {display:none !important;}
-    
+    #MainMenu {visibility: hidden;}
+    div[data-testid="stDecoration"] {display: none !important;}
+    div[data-testid="stToolbar"] {visibility: hidden !important;}
+    footer {visibility: hidden;}
+
+    /* ২. স্টাইল লক করা (আগের ডিজাইন ঠিক রাখা) */
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
     html, body, [class*="css"] { font-family: 'Inter', sans-serif; }
 
@@ -62,7 +66,6 @@ def get_data():
             df[col] = df[col].astype(str).str.strip()
     return df
 
-# এভারেজ ক্যালকুলেশন ফাংশন
 def calculate_avg(target_df, product_name, is_rework=False):
     temp = target_df[target_df['Product'].str.lower() == product_name.lower()]
     if is_rework:
@@ -76,7 +79,7 @@ def calculate_avg(target_df, product_name, is_rework=False):
 try:
     df_raw = get_data()
 
-    # --- ৩. সাইডবার ফিল্টার ও নেভিগেশন (হারানো অংশগুলো ফিরিয়ে আনা হয়েছে) ---
+    # --- ৩. সাইডবার ন্যাভিগেশন ও ফিল্টার ---
     st.sidebar.markdown("# 🧭 Navigation")
     view_mode = st.sidebar.radio("Go to", ["📊 Dashboard", "🔍 Tracking System"])
     st.sidebar.markdown("---")
@@ -100,7 +103,7 @@ try:
     if view_mode == "📊 Dashboard":
         st.markdown("<h1 style='text-align: center;'>Performance Analytics 2025</h1>", unsafe_allow_html=True)
         
-        # ৪. মেইন ৭টি মেট্রিক কার্ড (Global View)
+        # কার্ড মেট্রিক্স
         c1, c2, c3, c4, c5, c6, c7 = st.columns(7)
         with c1: st.markdown(f'<div class="metric-card rework-border">Rework AVG<br><h2 style="color:#ef4444;">{calculate_avg(df, "Floorplan Queue", True)}</h2></div>', unsafe_allow_html=True)
         with c2: st.markdown(f'<div class="metric-card fp-border">FP AVG<br><h2 style="color:#3b82f6;">{calculate_avg(df, "Floorplan Queue")}</h2></div>', unsafe_allow_html=True)
@@ -110,7 +113,6 @@ try:
         with c6: st.markdown(f'<div class="metric-card vanbree-border">Van Bree<br><h2 style="color:#06b6d4;">{calculate_avg(df, "Van Bree Media")}</h2></div>', unsafe_allow_html=True)
         with c7: st.markdown(f'<div class="metric-card total-border">Total Order<br><h2 style="color:#64748b;">{len(df)}</h2></div>', unsafe_allow_html=True)
 
-        st.markdown("<br>", unsafe_allow_html=True)
         tab1, tab2, tab3 = st.tabs(["📉 Overview & Trend", "👥 Team & Artist Summary", "🎨 Artist Analysis"])
 
         with tab1:
@@ -125,7 +127,6 @@ try:
                 for i, row in enumerate(leader_df.itertuples(), 1):
                     st.info(f"{i}. **{row.Name}** - {row.Orders} Orders")
 
-        # --- ট্যাব ২: আপনার হারানো সব কলাম এখানে ফিরিয়ে আনা হয়েছে ---
         with tab2:
             st.subheader("Detailed Team Performance")
             team_sum = df.groupby(['Team', 'Shift']).agg(
@@ -155,13 +156,10 @@ try:
                 VanBree=('Product', lambda x: x.str.lower().eq('van bree media').sum()),
                 SQM=('SQM', 'sum')
             ).reset_index()
-            # Idle Time ক্যালকুলেশন
             art_sum['Idle'] = (art_sum['worked_days'] * 400) - art_sum['Time']
             art_sum['Idle'] = art_sum['Idle'].apply(lambda x: max(0, int(x)))
-            
-            # কলামগুলো সাজানো আপনার স্ক্রিনশট অনুযায়ী
-            cols = ['Name', 'Team', 'Shift', 'Order', 'Time', 'Idle', 'Rework', 'FP', 'MRP', 'UA', 'CAD', 'VanBree', 'SQM']
-            st.dataframe(art_sum[cols].sort_values('Order', ascending=False), use_container_width=True, hide_index=True)
+            cols_order = ['Name', 'Team', 'Shift', 'Order', 'Time', 'Idle', 'Rework', 'FP', 'MRP', 'UA', 'CAD', 'VanBree', 'SQM']
+            st.dataframe(art_sum[cols_order].sort_values('Order', ascending=False), use_container_width=True, hide_index=True)
 
         with tab3:
             artist_selected = st.selectbox("Select Artist for Details", sorted(df['Name'].unique().tolist()))
