@@ -31,7 +31,7 @@ def get_gspread_client():
     # private_key এর ভেতরের \n ঠিক করা
     creds_dict["private_key"] = creds_dict["private_key"].replace("\\n", "\n")
     creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
-    return gspread.authorize(creds)ছে
+    return gspread.authorize(creds)
     creds_dict = dict(st.secrets["gcp_service_account"])
     # private_key এর ভেতরের \n ঠিক করা
     creds_dict["private_key"] = creds_dict["private_key"].replace("\\n", "\n")
@@ -139,6 +139,7 @@ try:
 
 except Exception as e:
     st.error(f"Error loading dashboard: {e}")
+
 
 
 
