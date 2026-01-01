@@ -5,23 +5,27 @@ from oauth2client.service_account import ServiceAccountCredentials
 import plotly.express as px
 import json
 
-# --- ১. পেজ সেটিংস ও স্মার্ট ডিজাইন (ন্যাভিগেশন বাটনটি রেখে বাকি সব হাইড) ---
+# --- ১. পেজ সেটিংস ও স্মার্ট ডিজাইন (ন্যাভিগেশন বার ফিক্সড করা হয়েছে) ---
 st.set_page_config(
     page_title="Performance Analytics 2025", 
     layout="wide",
-    initial_sidebar_state="expanded" # অ্যাপ ওপেন হওয়ার সময় সাইডবারটি খোলা থাকবে
+    initial_sidebar_state="expanded" # অ্যাপ খুললেই সাইডবার খোলা থাকবে
 )
 
 st.markdown("""
     <style>
-    /* ১. শুধুমাত্র ডিপ্লয় বাটন এবং গিটহাব আইকন হাইড করা */
+    /* ১. গিটহাব আইকন, ডিপ্লয় বাটন এবং থ্রি-ডট মেনু পুরোপুরি হাইড করা */
     .stDeployButton {display:none !important;}
     #MainMenu {visibility: hidden;}
-    div[data-testid="stDecoration"] {display: none !important;}
-    div[data-testid="stToolbar"] {visibility: hidden !important;}
     footer {visibility: hidden;}
+    [data-testid="stDecoration"] {display:none !important;}
+    
+    /* রাইট সাইডবার টুলবার (গিটহাব আইকন) হাইড করা কিন্তু বাম পাশের মেনু বাটন রাখা */
+    [data-testid="stHeader"] [data-testid="stToolbar"] {
+        display: none !important;
+    }
 
-    /* ২. স্টাইল লক করা (আগের ডিজাইন ঠিক রাখা) */
+    /* ২. আধুনিক ফন্ট এবং মেট্রিক কার্ড ডিজাইন (লক করা হয়েছে) */
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
     html, body, [class*="css"] { font-family: 'Inter', sans-serif; }
 
@@ -57,15 +61,18 @@ def get_data():
     sheet_id = "1e-3jYxjPkXuxkAuSJaIJ6jXU0RT1LemY6bBQbCTX_6Y"
     spreadsheet = client.open_by_key(sheet_id)
     df = pd.DataFrame(spreadsheet.worksheet("DATA").get_all_records())
+    
     df.columns = [c.strip() for c in df.columns]
     df['date'] = pd.to_datetime(df['date'], errors='coerce').dt.date
     df['Time'] = pd.to_numeric(df['Time'], errors='coerce').fillna(0)
     df['SQM'] = pd.to_numeric(df['SQM'], errors='coerce').fillna(0)
+    
     for col in ['Product', 'Job Type', 'Name', 'Team', 'Shift']:
         if col in df.columns:
             df[col] = df[col].astype(str).str.strip()
     return df
 
+# এভারেজ ক্যালকুলেশন ফাংশন
 def calculate_avg(target_df, product_name, is_rework=False):
     temp = target_df[target_df['Product'].str.lower() == product_name.lower()]
     if is_rework:
@@ -93,6 +100,7 @@ try:
     emp_type_selected = st.sidebar.selectbox("Employee Type", ["All", "Artist", "QC"])
     product_filter = st.sidebar.selectbox("Product Filter", ["All"] + sorted(df_raw['Product'].unique().tolist()))
 
+    # ফিল্টারিং লজিক
     mask = (df_raw['date'] >= start_date) & (df_raw['date'] <= end_date)
     if team_selected != "All": mask &= (df_raw['Team'] == team_selected)
     if shift_selected != "All": mask &= (df_raw['Shift'] == shift_selected)
@@ -162,10 +170,19 @@ try:
             st.dataframe(art_sum[cols_order].sort_values('Order', ascending=False), use_container_width=True, hide_index=True)
 
         with tab3:
+            # আর্টিস্ট অ্যানালাইসিস ট্যাবে ড্রপডাউন ফিরে আনা হয়েছে
             artist_selected = st.selectbox("Select Artist for Details", sorted(df['Name'].unique().tolist()))
             artist_df = df[df['Name'] == artist_selected].copy()
             if not artist_df.empty:
                 st.subheader(f"Stats: {artist_selected}")
+                
+                # আর্টিস্ট সিলেক্ট করলে উপরের কার্ডগুলোর মতো এই আর্টিস্টের পার্সোনাল এভারেজ দেখানো
+                ca1, ca2, ca3, ca4 = st.columns(4)
+                with ca1: st.metric("Personal Rework", calculate_avg(artist_df, "Floorplan Queue", True))
+                with ca2: st.metric("Personal FP AVG", calculate_avg(artist_df, "Floorplan Queue"))
+                with ca3: st.metric("Personal MRP AVG", calculate_avg(artist_df, "Measurement Queue"))
+                with ca4: st.metric("Total Jobs Done", len(artist_df))
+
                 col_c1, col_c2 = st.columns([1, 2])
                 with col_c1:
                     proj_counts = artist_df.groupby('Product').size().reset_index(name='Unique Orders')
