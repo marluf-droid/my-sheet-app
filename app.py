@@ -6,7 +6,7 @@ import plotly.express as px
 from datetime import datetime
 import json
 
-# --- ১. পেজ সেটআপ ও ডিজাইন ---
+# --- ১. পেজ সেটআপ ---
 st.set_page_config(page_title="Performance Analytics 2025", layout="wide")
 
 st.markdown("""
@@ -37,16 +37,14 @@ def get_data():
     spreadsheet = client.open_by_key(sheet_id)
     df = pd.DataFrame(spreadsheet.worksheet("DATA").get_all_records())
     
-    # কলাম ক্লিন করা
+    # কলাম ক্লিন এবং ফরম্যাটিং
     df.columns = [c.strip() for c in df.columns]
-    
-    # ডাটা টাইপ ও টেক্সট ক্লিন করা
     df['date'] = pd.to_datetime(df['date'], errors='coerce').dt.date
     df['Time'] = pd.to_numeric(df['Time'], errors='coerce').fillna(0)
     df['SQM'] = pd.to_numeric(df['SQM'], errors='coerce').fillna(0)
     
-    # টেক্সট কলাম থেকে বাড়তি স্পেস মুছে ফেলা
-    text_cols = ['Product', 'Job Type', 'Employee Type', 'Team', 'Name', 'Shift', 'Labels']
+    # টেক্সট কলাম ক্লিন করা
+    text_cols = ['Product', 'Job Type', 'Employee Type', 'Team', 'Name', 'Shift']
     for col in text_cols:
         if col in df.columns:
             df[col] = df[col].astype(str).str.strip()
@@ -56,7 +54,7 @@ def get_data():
 try:
     df_raw = get_data()
 
-    # --- ৩. সাইডবার ন্যাভিগেশন ও গ্লোবাল ফিল্টারস ---
+    # --- ৩. সাইডবার ন্যাভিগেশন ও ফিল্টার ---
     st.sidebar.markdown("# 🧭 Navigation")
     page = st.sidebar.radio("Select Dashboard", ["Main Dashboard", "Performance Tracking"])
     st.sidebar.markdown("---")
@@ -79,12 +77,9 @@ try:
     if product_selected_global != "All": mask &= (df_raw['Product'] == product_selected_global)
     df = df_raw[mask].copy()
 
-    # --- ৪. স্পেশাল ক্যালকুলেশন (Man-Day Average) ---
-    def calculate_man_day_avg(target_df, product_name, job_type="Live Job"):
-        subset = target_df[
-            (target_df['Product'].str.lower() == product_name.lower()) & 
-            (target_df['Job Type'].str.lower() == job_type.lower())
-        ]
+    # --- ৪. স্পেশাল ম্যান-ডে এভারেজ ক্যালকুলেশন ---
+    def calculate_man_day_avg(target_df, p_name, j_type="Live Job"):
+        subset = target_df[(target_df['Product'] == p_name) & (target_df['Job Type'] == j_type)]
         if subset.empty: return 0.0
         total_tasks = len(subset)
         man_days = subset.groupby(['Name', 'date']).size().shape[0]
@@ -102,24 +97,24 @@ try:
         avg_ua = calculate_man_day_avg(df, "Urban Angles", "Live Job")
         avg_vanbree = calculate_man_day_avg(df, "Van Bree Media", "Live Job")
 
-        c1, c2, c3, c4, c5, c6, c7 = st.columns(7)
-        with c1: st.markdown(f'<div class="metric-card rework-card">Rework AVG<br><h2>{avg_rework}</h2></div>', unsafe_allow_html=True)
-        with c2: st.markdown(f'<div class="metric-card fp-card">FP AVG<br><h2>{avg_fp}</h2></div>', unsafe_allow_html=True)
-        with c3: st.markdown(f'<div class="metric-card mrp-card">MRP AVG<br><h2>{avg_mrp}</h2></div>', unsafe_allow_html=True)
-        with c4: st.markdown(f'<div class="metric-card cad-card">CAD AVG<br><h2>{avg_cad}</h2></div>', unsafe_allow_html=True)
-        with c5: st.markdown(f'<div class="metric-card ua-card">UA AVG<br><h2>{avg_ua}</h2></div>', unsafe_allow_html=True)
-        with c6: st.markdown(f'<div class="metric-card vanbree-card">Van Bree<br><h2>{avg_vanbree}</h2></div>', unsafe_allow_html=True)
-        with c7: st.markdown(f'<div class="metric-card total-card">Total Order<br><h2>{len(df)}</h2></div>', unsafe_allow_html=True)
+        m1, m2, m3, m4, m5, m6, m7 = st.columns(7)
+        with m1: st.markdown(f'<div class="metric-card rework-card">Rework AVG<br><h2>{avg_rework}</h2></div>', unsafe_allow_html=True)
+        with m2: st.markdown(f'<div class="metric-card fp-card">FP AVG<br><h2>{avg_fp}</h2></div>', unsafe_allow_html=True)
+        with m3: st.markdown(f'<div class="metric-card mrp-card">MRP AVG<br><h2>{avg_mrp}</h2></div>', unsafe_allow_html=True)
+        with m4: st.markdown(f'<div class="metric-card cad-card">CAD AVG<br><h2>{avg_cad}</h2></div>', unsafe_allow_html=True)
+        with m5: st.markdown(f'<div class="metric-card ua-card">UA AVG<br><h2>{avg_ua}</h2></div>', unsafe_allow_html=True)
+        with m6: st.markdown(f'<div class="metric-card vanbree-card">Van Bree<br><h2>{avg_vanbree}</h2></div>', unsafe_allow_html=True)
+        with m7: st.markdown(f'<div class="metric-card total-card">Total Order<br><h2>{len(df)}</h2></div>', unsafe_allow_html=True)
 
         st.markdown("<br>", unsafe_allow_html=True)
         col_left, col_right = st.columns([1.8, 1])
 
         with col_left:
-            # --- TEAM SUMMARY (সব কলাম সহ) ---
+            # --- TEAM SUMMARY (সব কলাম আপনার চাহিদা অনুযায়ী) ---
             st.subheader("Team Summary")
             team_sum = df.groupby(['Team', 'Shift']).agg(
                 Present=('Name', 'nunique'),
-                Rework=('Job Type', lambda x: (x.str.lower() == 'rework').sum()),
+                Rework=('Job Type', lambda x: (x == 'Rework').sum()),
                 FP=('Product', lambda x: (x == 'Floorplan Queue').sum()),
                 MRP=('Product', lambda x: (x == 'Measurement Queue').sum()),
                 CAD=('Product', lambda x: (x == 'Autocad Queue').sum()),
@@ -136,7 +131,7 @@ try:
             artist_breakdown = df.groupby(['Name', 'Team', 'Shift']).agg(
                 Order=('Ticket ID', 'count'),
                 Time=('Time', 'sum'),
-                Rework=('Job Type', lambda x: (x.str.lower() == 'rework').sum()),
+                Rework=('Job Type', lambda x: (x == 'Rework').sum()),
                 FP=('Product', lambda x: (x == 'Floorplan Queue').sum()),
                 MRP=('Product', lambda x: (x == 'Measurement Queue').sum()),
                 UA=('Product', lambda x: (x == 'Urban Angles').sum()),
@@ -147,33 +142,39 @@ try:
             ).reset_index()
             artist_breakdown['Idle'] = (artist_breakdown['worked_days'] * 400) - artist_breakdown['Time']
             artist_breakdown['Idle'] = artist_breakdown['Idle'].apply(lambda x: max(0, x))
-            artist_breakdown = artist_breakdown.sort_values(by=['Order', 'Time'], ascending=False)
             
-            st.dataframe(artist_breakdown[['Name', 'Team', 'Shift', 'Order', 'Time', 'Idle', 'Rework', 'FP', 'MRP', 'UA', 'CAD', 'VanBree', 'SQM']], use_container_width=True, hide_index=True)
+            # আপনার গুগল শিট স্কোরিং লজিক (Order + Time/1000000) দিয়ে সর্টিং
+            artist_breakdown['Score'] = artist_breakdown['Order'] + (artist_breakdown['Time'] / 1000000)
+            artist_breakdown = artist_breakdown.sort_values(by='Score', ascending=False)
+            
+            show_cols = ['Name', 'Team', 'Shift', 'Order', 'Time', 'Idle', 'Rework', 'FP', 'MRP', 'UA', 'CAD', 'VanBree', 'SQM']
+            st.dataframe(artist_breakdown[show_cols], use_container_width=True, hide_index=True)
 
         with col_right:
-            # আর্টিস্ট সিলেকশন (টপ পারফর্মার অটোমেটিক)
+            # --- আর্টিস্ট সিলেক্ট লজিক (শীট স্কোর অনুযায়ী টপ পারফর্মার) ---
             unique_names = sorted(df['Name'].unique().tolist())
-            top_artist_name = artist_breakdown['Name'].iloc[0] if not artist_breakdown.empty else ""
-            artist_selected = st.selectbox("Select Artist for Stats", unique_names, index=unique_names.index(top_artist_name) if top_artist_name in unique_names else 0)
+            top_name = artist_breakdown.iloc[0]['Name'] if not artist_breakdown.empty else ""
+            artist_selected = st.selectbox("Select Artist for Stats", unique_names, 
+                                           index=unique_names.index(top_name) if top_name in unique_names else 0)
             
             artist_df = df[df['Name'] == artist_selected]
             if not artist_df.empty:
                 st.subheader(f"Stats: {artist_selected}")
                 
-                # বার চার্ট (অর্ডার সংখ্যা বা কাউন্ট অনুযায়ী)
-                bar_data = artist_df['Product'].value_counts().reset_index()
-                bar_data.columns = ['Product', 'Order Count']
-                bar_fig = px.bar(bar_data, x='Product', y='Order Count', text='Order Count', 
-                                 color='Product', color_discrete_sequence=px.colors.qualitative.Pastel)
-                bar_fig.update_traces(textposition='outside')
-                st.plotly_chart(bar_fig, use_container_width=True)
+                # পাই চার্ট (আপনার লজিক: Unique Product Count)
+                pie_data = artist_df['Product'].value_counts().reset_index()
+                pie_data.columns = ['Product', 'Unique Orders']
+                fig = px.pie(pie_data, values='Unique Orders', names='Product', hole=0.5, height=350)
+                fig.update_traces(textinfo='value+label')
+                st.plotly_chart(fig, use_container_width=True)
                 
-                st.subheader("Artist Performance Detail")
+                st.subheader("Individual Performance Detail")
                 detail_df = artist_df.copy()
                 detail_df['date'] = detail_df['date'].apply(lambda x: x.strftime('%m/%d/%Y'))
+                # আপনার চাওয়া সব কলাম এখানে
                 detail_cols = ['date', 'Ticket ID', 'Product', 'SQM', 'Floor', 'Labels', 'Time']
-                st.dataframe(detail_df[detail_cols].rename(columns={'date':'Date', 'Ticket ID':'Order ID'}), use_container_width=True, hide_index=True)
+                st.dataframe(detail_df[detail_cols].rename(columns={'date':'Date', 'Ticket ID':'Order ID'}), 
+                             use_container_width=True, hide_index=True)
 
     # --- ৬. পারফরম্যান্স ট্র্যাকিং পেজ ---
     elif page == "Performance Tracking":
