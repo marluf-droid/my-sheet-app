@@ -6,7 +6,7 @@ import plotly.express as px
 from datetime import datetime
 import json
 
-# --- ১. পেজ সেটআপ ও কাস্টম ডিজাইন ---
+# --- ১. পেজ সেটআপ ---
 st.set_page_config(page_title="Performance Analytics 2025", layout="wide")
 
 st.markdown("""
@@ -37,17 +37,26 @@ def get_data():
     spreadsheet = client.open_by_key(sheet_id)
     df = pd.DataFrame(spreadsheet.worksheet("DATA").get_all_records())
     
+    # কলাম ক্লিন করা
     df.columns = [c.strip() for c in df.columns]
+    
+    # এরর ফিক্স: ডাটা টাইপ কনভার্ট করা
     df['date'] = pd.to_datetime(df['date'], errors='coerce').dt.date
     df['Time'] = pd.to_numeric(df['Time'], errors='coerce').fillna(0)
     df['SQM'] = pd.to_numeric(df['SQM'], errors='coerce').fillna(0)
-    if 'Floor' in df.columns: df['Floor'] = pd.to_numeric(df['Floor'], errors='coerce').fillna('')
+    
+    # Floor এবং Ticket ID কলামকে টেক্সট হিসেবে রাখা (যাতে mixed type error না আসে)
+    if 'Floor' in df.columns:
+        df['Floor'] = df['Floor'].astype(str)
+    if 'Ticket ID' in df.columns:
+        df['Ticket ID'] = df['Ticket ID'].astype(str)
+        
     return df
 
 try:
     df_raw = get_data()
 
-    # --- ৩. সাইডবার ন্যাভিগেশন ও গ্লোবাল ফিল্টারস ---
+    # --- ৩. সাইডবার ন্যাভিগেশন ও ফিল্টার ---
     st.sidebar.markdown("# 🧭 Navigation")
     page = st.sidebar.radio("Select Dashboard", ["Main Dashboard", "Performance Tracking"])
     st.sidebar.markdown("---")
@@ -67,9 +76,13 @@ try:
     if shift_selected != "All": mask &= (df_raw['Shift'] == shift_selected)
     if emp_type_selected != "All": mask &= (df_raw['Employee Type'] == emp_type_selected)
     if product_selected != "All": mask &= (df_raw['Product'] == product_selected)
-    df = df_raw[mask]
+    df = df_raw[mask].copy()
 
-    # --- ৪. স্পেশাল ক্যালকুলেশন ফাংশন ---
+    # তারিখগুলোকে টেক্সট হিসেবে রূপান্তর (Serialization error এড়াতে)
+    df_display = df.copy()
+    df_display['date'] = df_display['date'].apply(lambda x: x.strftime('%m/%d/%Y') if hasattr(x, 'strftime') else str(x))
+
+    # --- ৪. স্পেশাল ক্যালকুলেশন ---
     def calculate_man_day_avg(target_df, product_name, job_type="Live Job"):
         subset = target_df[(target_df['Product'] == product_name) & (target_df['Job Type'] == job_type)]
         if subset.empty: return 0.0
@@ -104,14 +117,10 @@ try:
             st.subheader("Team Summary")
             team_sum = df.groupby(['Team', 'Shift']).agg(
                 Present=('Name', 'nunique'),
-                Rework=('Job Type', lambda x: (x == 'Rework').sum()),
-                FP=('Product', lambda x: (x == 'Floorplan Queue').sum()),
-                MRP=('Product', lambda x: (x == 'Measurement Queue').sum()),
-                CAD=('Product', lambda x: (x == 'Autocad Queue').sum()),
-                UA=('Product', lambda x: (x == 'Urban Angles').sum()),
-                VanBree=('Product', lambda x: (x == 'Van Bree Media').sum()),
                 Orders=('Ticket ID', 'count'),
-                Time=('Time', 'sum')
+                Time=('Time', 'sum'),
+                CAD=('Product', lambda x: (x == 'Autocad Queue').sum()),
+                UA=('Product', lambda x: (x == 'Urban Angles').sum())
             ).reset_index()
             st.dataframe(team_sum, use_container_width=True, hide_index=True)
             
@@ -130,54 +139,51 @@ try:
             ).reset_index()
             artist_breakdown['Idle'] = (artist_breakdown['worked_days'] * 400) - artist_breakdown['Time']
             artist_breakdown['Idle'] = artist_breakdown['Idle'].apply(lambda x: max(0, x))
-            
-            # ড্রপডাউন সিলেকশন লজিকের জন্য এই সর্টিং ব্যবহার করা হবে
             artist_breakdown = artist_breakdown.sort_values(by=['Order', 'Time'], ascending=False)
             
             cols_order = ['Name', 'Team', 'Shift', 'Order', 'Time', 'Idle', 'Rework', 'FP', 'MRP', 'UA', 'CAD', 'VanBree', 'SQM']
             st.dataframe(artist_breakdown[cols_order], use_container_width=True, hide_index=True)
 
         with col_right:
-            # আর্টিস্ট সিলেকশন লজিক: টপ পারফর্মারকে অটো ডিফল্ট ধরা
             unique_artist_list = sorted(df['Name'].unique().tolist())
             if not artist_breakdown.empty:
                 top_performer_name = artist_breakdown.iloc[0]['Name']
                 default_idx = unique_artist_list.index(top_performer_name) if top_performer_name in unique_artist_list else 0
-            else:
-                default_idx = 0
+            else: default_idx = 0
 
             artist_selected = st.selectbox("Select Artist for Stats", unique_artist_list, index=default_idx)
             
-            artist_df = df[df['Name'] == artist_selected]
+            artist_df = df_display[df_display['Name'] == artist_selected]
             if not artist_df.empty:
                 st.subheader(f"Stats: {artist_selected}")
-                fig = px.pie(artist_df, values='Ticket ID', names='Product', hole=0.5, height=350)
-                fig.update_traces(textinfo='value+label')
-                st.plotly_chart(fig, use_container_width=True)
+                pie_fig = px.pie(artist_df, values='Time', names='Product', hole=0.5, height=350)
+                pie_fig.update_traces(textinfo='value+label')
+                st.plotly_chart(pie_fig, use_container_width=True)
                 
                 st.subheader("Artist Performance Detail")
-                # আপনার চাওয়া সব কলাম এখানে সাজানো হয়েছে
                 detail_cols = ['date', 'Ticket ID', 'Product', 'SQM', 'Floor', 'Labels', 'Time']
-                detail_t = artist_df[detail_cols].copy()
-                detail_t.columns = ['Date', 'Order ID', 'Product', 'SQM', 'Floor', 'Labels', 'Time']
+                detail_t = artist_df[[c for c in detail_cols if c in artist_df.columns]]
                 st.dataframe(detail_t, use_container_width=True, hide_index=True)
 
     # --- ৬. পারফরম্যান্স ট্র্যাকিং পেজ ---
     elif page == "Performance Tracking":
         st.title("🎯 PERFORMANCE TRACKING")
         criteria = st.selectbox("Criteria Selection", ["All", "Short IP", "Spending More Time", "High Time vs SQM"])
-        tdf = df.copy()
+        tdf = df_display.copy()
+        # ট্র্যাকিং এর জন্য অরিজিনাল ফ্লোট টাইম ব্যবহার
+        tdf_calc = df.copy()
         
-        short_ip_mask = (((tdf['Employee Type'] == 'QC') & (tdf['Time'] < 2)) | ((tdf['Employee Type'] == 'Artist') & (((tdf['Product'] == 'Floorplan Queue') & (tdf['Time'] <= 15)) | ((tdf['Product'] == 'Measurement Queue') & (tdf['Time'] < 5)) | (~tdf['Product'].isin(['Floorplan Queue', 'Measurement Queue']) & (tdf['Time'] <= 10)))))
-        spending_more_mask = (((tdf['Employee Type'] == 'QC') & (tdf['Time'] > 20)) | ((tdf['Employee Type'] == 'Artist') & ((tdf['Time'] >= 150) | ((tdf['Product'] == 'Measurement Queue') & (tdf['Time'] > 40)))))
-        high_time_sqm_mask = (tdf['Time'] > (tdf['SQM'] + 15)) & ~spending_more_mask
+        short_ip_mask = (((tdf_calc['Employee Type'] == 'QC') & (tdf_calc['Time'] < 2)) | ((tdf_calc['Employee Type'] == 'Artist') & (((tdf_calc['Product'] == 'Floorplan Queue') & (tdf_calc['Time'] <= 15)) | ((tdf_calc['Product'] == 'Measurement Queue') & (tdf_calc['Time'] < 5)) | (~tdf_calc['Product'].isin(['Floorplan Queue', 'Measurement Queue']) & (tdf_calc['Time'] <= 10)))))
+        spending_more_mask = (((tdf_calc['Employee Type'] == 'QC') & (tdf_calc['Time'] > 20)) | ((tdf_calc['Employee Type'] == 'Artist') & ((tdf_calc['Time'] >= 150) | ((tdf_calc['Product'] == 'Measurement Queue') & (tdf_calc['Time'] > 40)))))
+        high_time_sqm_mask = (tdf_calc['Time'] > (tdf_calc['SQM'] + 15)) & ~spending_more_mask
 
-        if criteria == "Short IP": tdf = tdf[short_ip_mask]
-        elif criteria == "Spending More Time": tdf = tdf[spending_more_mask]
-        elif criteria == "High Time vs SQM": tdf = tdf[high_time_sqm_mask]
+        final_mask = pd.Series([True] * len(tdf))
+        if criteria == "Short IP": final_mask = short_ip_mask
+        elif criteria == "Spending More Time": final_mask = spending_more_mask
+        elif criteria == "High Time vs SQM": final_mask = high_time_sqm_mask
 
-        st.metric("Total Jobs Found", len(tdf))
-        st.dataframe(tdf, use_container_width=True, hide_index=True)
+        st.metric("Total Jobs Found", len(tdf[final_mask]))
+        st.dataframe(tdf[final_mask], use_container_width=True, hide_index=True)
 
 except Exception as e:
-    st.error(f"Error: {e}")
+    st.error(f"Something went wrong: {e}")
