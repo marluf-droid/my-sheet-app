@@ -7,14 +7,16 @@ with col_right:
 
             artist_selected = st.selectbox("Select Artist for Stats", unique_artist_list, index=default_idx)
             
-            artist_df = df_display[df_display['Name'] == artist_selected]
+            # আর্টিস্ট অনুযায়ী ডাটা ফিল্টার
+            artist_df = df[df['Name'] == artist_selected]
+            
             if not artist_df.empty:
                 st.subheader(f"Stats: {artist_selected}")
                 
-                # ১. প্রজেক্ট সংখ্যা গণনা করা (Product wise total projects)
+                # ১. প্রজেক্ট সংখ্যা গণনা করা (প্রতিটি প্রোডাক্টে কয়টি কাজ করেছে)
                 project_counts = artist_df.groupby('Product').size().reset_index(name='Total Projects')
                 
-                # ২. বার চার্ট তৈরি করা (Bar Chart for Number of Projects)
+                # ২. বার চার্ট (Pie Chart এর বদলে এটি ব্যবহার করুন)
                 bar_fig = px.bar(
                     project_counts, 
                     x='Product', 
@@ -25,13 +27,19 @@ with col_right:
                     labels={'Total Projects': 'No. of Projects', 'Product': 'Product Type'}
                 )
                 
-                # চার্ট ডিজাইন আপডেট
                 bar_fig.update_traces(textposition='outside')
-                bar_fig.update_layout(showlegend=False) # এক্স-অ্যাক্সিসে নাম থাকলে লেজেন্ড দরকার নেই
+                bar_fig.update_layout(showlegend=False)
                 
+                # চার্টটি ডিসপ্লে করা
                 st.plotly_chart(bar_fig, use_container_width=True)
                 
+                # ৩. আর্টিস্টের কাজের ডিটেইলস টেবিল
                 st.subheader("Artist Performance Detail")
                 detail_cols = ['date', 'Ticket ID', 'Product', 'SQM', 'Floor', 'Labels', 'Time']
-                detail_t = artist_df[[c for c in detail_cols if c in artist_df.columns]]
+                detail_t = artist_df[[c for c in detail_cols if c in artist_df.columns]].copy()
+                
+                # তারিখ ফরম্যাট ঠিক করা
+                if 'date' in detail_t.columns:
+                    detail_t['date'] = detail_t['date'].astype(str)
+                
                 st.dataframe(detail_t, use_container_width=True, hide_index=True)
