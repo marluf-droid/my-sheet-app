@@ -31,14 +31,14 @@ def get_gspread_client():
     creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_info, scope)
     return gspread.authorize(creds)
 
-@st.cache_data(ttl=600)
+@st.cache_data(ttl=300) # ডাটা ৫ মিনিট পর পর রিফ্রেশ হবে
 def get_data():
     client = get_gspread_client()
     sheet_id = "1e-3jYxjPkXuxkAuSJaIJ6jXU0RT1LemY6bBQbCTX_6Y"
     spreadsheet = client.open_by_key(sheet_id)
     df = pd.DataFrame(spreadsheet.worksheet("DATA").get_all_records())
     
-    # কলাম ক্লিন করা
+    # কলামের স্পেস ক্লিন করা
     df.columns = [c.strip() for c in df.columns]
     
     # ডাটা টাইপ কনভার্ট করা
@@ -68,7 +68,7 @@ try:
     emp_type_selected = st.sidebar.selectbox("Employee Type", ["All", "Artist", "QC"])
     product_selected = st.sidebar.selectbox("Product Type Filter", ["All", "Floorplan Queue", "Measurement Queue", "Autocad Queue", "Rework", "Urban Angles", "Van Bree Media"])
 
-    # ডাটা ফিল্টারিং
+    # ডাটা ফিল্টারিং (Date, Team, Shift অনুযায়ী)
     mask = (df_raw['date'] >= start_date) & (df_raw['date'] <= end_date)
     if team_selected != "All": mask &= (df_raw['Team'] == team_selected)
     if shift_selected != "All": mask &= (df_raw['Shift'] == shift_selected)
@@ -76,11 +76,7 @@ try:
     if product_selected != "All": mask &= (df_raw['Product'] == product_selected)
     df = df_raw[mask].copy()
 
-    # তারিখ ফরম্যাট
-    df_display = df.copy()
-    df_display['date'] = df_display['date'].apply(lambda x: x.strftime('%Y-%m-%d') if hasattr(x, 'strftime') else str(x))
-
-    # ক্যালকুলেশন ফাংশন
+    # মেইন ক্যালকুলেশন ফাংশন
     def calculate_man_day_avg(target_df, product_name, job_type="Live Job"):
         subset = target_df[(target_df['Product'] == product_name) & (target_df['Job Type'] == job_type)]
         if subset.empty: return 0.0
@@ -123,7 +119,7 @@ try:
             ).reset_index()
             st.dataframe(team_sum, use_container_width=True, hide_index=True)
             
-            st.subheader("Performance Breakdown Section (Artist Summary)")
+            st.subheader("Performance Breakdown (Artist Summary)")
             artist_breakdown = df.groupby(['Name', 'Team', 'Shift']).agg(
                 Order=('Ticket ID', 'count'),
                 Time=('Time', 'sum'),
@@ -143,7 +139,7 @@ try:
             cols_order = ['Name', 'Team', 'Shift', 'Order', 'Time', 'Idle', 'Rework', 'FP', 'MRP', 'UA', 'CAD', 'VanBree', 'SQM']
             st.dataframe(artist_breakdown[cols_order], use_container_width=True, hide_index=True)
 
-        # --- এই অংশটি আপনার চাহিদামত আপডেট করা হয়েছে ---
+        # --- ডানপাশের কলাম যেখানে আপনার কাঙ্ক্ষিত পরিবর্তন করা হয়েছে ---
         with col_right:
             unique_artist_list = sorted(df['Name'].unique().tolist())
             if not artist_breakdown.empty:
@@ -157,30 +153,32 @@ try:
             artist_df = df[df['Name'] == artist_selected]
             
             if not artist_df.empty:
-                st.subheader(f"Stats: {artist_selected}")
+                st.subheader(f"Total Projects Done: {artist_selected}")
                 
-                # প্রজেক্ট সংখ্যা বের করা (Count of Ticket ID)
-                # এখানে 'Time' ব্যবহার করা হয়নি, শুধু row সংখ্যা (size) গোনা হয়েছে।
-                project_counts = artist_df.groupby('Product').size().reset_index(name='Total Projects')
+                # ১. শুধুমাত্র প্রজেক্ট সংখ্যা বের করা (Count of Entries)
+                # এখানে .size() ব্যবহার করায় এটি শুধু রো (Row) সংখ্যা গুনবে, 'Time' এর ভ্যালু নিবে না।
+                project_distribution = artist_df.groupby('Product').size().reset_index(name='Total Projects')
                 
-                # বার চার্ট (প্রজেক্ট সংখ্যা অনুযায়ী)
+                # ২. বার চার্ট তৈরি (Bar Chart)
                 bar_fig = px.bar(
-                    project_counts, 
+                    project_distribution, 
                     x='Product', 
                     y='Total Projects',
-                    text='Total Projects',
+                    text='Total Projects', # বারের মাথায় সংখ্যা দেখাবে
                     color='Product',
                     height=400,
-                    labels={'Total Projects': 'No. of Projects', 'Product': 'Category'}
+                    labels={'Total Projects': 'Number of Projects', 'Product': 'Category'}
                 )
                 
                 bar_fig.update_traces(textposition='outside')
-                bar_fig.update_layout(showlegend=False)
+                bar_fig.update_layout(showlegend=False, xaxis_title="", yaxis_title="Number of Projects")
+                
+                # চার্ট ডিসপ্লে
                 st.plotly_chart(bar_fig, use_container_width=True)
                 
+                # আর্টিস্টের কাজের ডিটেইলস টেবিল
                 st.subheader("Artist Performance Detail")
                 detail_cols = ['date', 'Ticket ID', 'Product', 'SQM', 'Floor', 'Labels', 'Time']
-                # ডিসপ্লে ডাটা থেকে তারিখ ঠিক রেখে ডিটেইলস দেখানো
                 detail_t = artist_df[[c for c in detail_cols if c in artist_df.columns]].copy()
                 detail_t['date'] = detail_t['date'].astype(str)
                 st.dataframe(detail_t, use_container_width=True, hide_index=True)
@@ -191,7 +189,6 @@ try:
         criteria = st.selectbox("Criteria Selection", ["All", "Short IP", "Spending More Time", "High Time vs SQM"])
         
         tdf_calc = df.copy()
-        
         short_ip_mask = (((tdf_calc['Employee Type'] == 'QC') & (tdf_calc['Time'] < 2)) | ((tdf_calc['Employee Type'] == 'Artist') & (((tdf_calc['Product'] == 'Floorplan Queue') & (tdf_calc['Time'] <= 15)) | ((tdf_calc['Product'] == 'Measurement Queue') & (tdf_calc['Time'] < 5)) | (~tdf_calc['Product'].isin(['Floorplan Queue', 'Measurement Queue']) & (tdf_calc['Time'] <= 10)))))
         spending_more_mask = (((tdf_calc['Employee Type'] == 'QC') & (tdf_calc['Time'] > 20)) | ((tdf_calc['Employee Type'] == 'Artist') & ((tdf_calc['Time'] >= 150) | ((tdf_calc['Product'] == 'Measurement Queue') & (tdf_calc['Time'] > 40)))))
         high_time_sqm_mask = (tdf_calc['Time'] > (tdf_calc['SQM'] + 15)) & ~spending_more_mask
@@ -202,8 +199,6 @@ try:
         elif criteria == "High Time vs SQM": final_mask = high_time_sqm_mask
 
         st.metric("Total Jobs Found", len(tdf_calc[final_mask]))
-        
-        # ট্র্যাকিং টেবিল ডিসপ্লে
         track_df = tdf_calc[final_mask].copy()
         track_df['date'] = track_df['date'].astype(str)
         st.dataframe(track_df, use_container_width=True, hide_index=True)
