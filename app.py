@@ -5,27 +5,25 @@ from oauth2client.service_account import ServiceAccountCredentials
 import plotly.express as px
 import json
 
-# --- ১. পেজ সেটিংস ও ডিজাইন লক করা (ন্যাভিগেশন বার ফিক্সড) ---
+# --- ১. পেজ সেটিংস ও ন্যাভিগেশন বার ফিক্স করা ---
 st.set_page_config(
     page_title="Performance Analytics 2025", 
     layout="wide",
-    initial_sidebar_state="expanded" # অ্যাপ ওপেন হলে ন্যাভিগেশন বার খোলা থাকবে
+    initial_sidebar_state="expanded" # এটি নিশ্চিত করবে যে অ্যাপ খুললেই ন্যাভিগেশন বারটি খোলা থাকবে
 )
 
 st.markdown("""
     <style>
-    /* ১. গিটহাব, ফর্ক এবং ডিপ্লয় বাটন হাইড করা (ন্যাভিগেশন বাটনটি রেখে) */
+    /* ১. শুধুমাত্র অপ্রয়োজনীয় আইকনগুলো হাইড করা (GitHub, Fork, Deploy) */
     .stDeployButton {display:none !important;}
-    #MainMenu {visibility: hidden;}
+    div[data-testid="stToolbar"] {display: none !important;}
+    div[data-testid="stDecoration"] {display: none !important;}
     footer {visibility: hidden;}
-    [data-testid="stDecoration"] {display:none !important;}
     
-    /* রাইট সাইডবার টুলবার (গিটহাব আইকন) হাইড করা কিন্তু বাম পাশের মেনু বাটন বজায় রাখা */
-    [data-testid="stHeader"] [data-testid="stToolbar"] {
-        display: none !important;
-    }
+    /* থ্রি-ডট মেনু হাইড করা কিন্তু ন্যাভিগেশন বাটন (Chevron) দেখানো */
+    #MainMenu {visibility: hidden;}
 
-    /* ২. আধুনিক ফন্ট এবং মেট্রিক কার্ড ডিজাইন */
+    /* ২. আধুনিক ডিজাইন এবং ফন্ট */
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
     html, body, [class*="css"] { font-family: 'Inter', sans-serif; }
 
@@ -96,8 +94,8 @@ try:
     shift_selected = st.sidebar.selectbox("Shift", ["All"] + sorted(df_raw['Shift'].unique().tolist()))
     emp_type_selected = st.sidebar.selectbox("Employee Type", ["All", "Artist", "QC"])
     
-    # আর্টিস্ট ফিল্টার সাইডবারে রাখা হয়েছে যাতে এটি সব কার্ড নিয়ন্ত্রণ করতে পারে
-    artist_selected = st.sidebar.selectbox("Select Artist Filter (Global)", ["All Artists"] + sorted(df_raw['Name'].unique().tolist()))
+    # এটি মেইন কার্ডগুলোকে নিয়ন্ত্রণ করবে
+    artist_selected = st.sidebar.selectbox("Select Artist (Global View)", ["All Artists"] + sorted(df_raw['Name'].unique().tolist()))
     
     product_filter = st.sidebar.selectbox("Product Filter", ["All"] + sorted(df_raw['Product'].unique().tolist()))
 
@@ -111,10 +109,10 @@ try:
     df = df_raw[mask].copy()
 
     if view_mode == "📊 Dashboard":
-        # ৪. মেইন কার্ডস (এটি এখন অটোমেটিক আর্টিস্ট অনুযায়ী আপডেট হবে)
         title_suffix = f" - {artist_selected}" if artist_selected != "All Artists" else ""
         st.markdown(f"<h1 style='text-align: center;'>Performance Analytics {title_suffix}</h1>", unsafe_allow_html=True)
         
+        # মেইন ৭টি মেট্রিক কার্ড (এখন এটি আর্টিস্ট সিলেক্ট করলে আপডেট হবে)
         c1, c2, c3, c4, c5, c6, c7 = st.columns(7)
         with c1: st.markdown(f'<div class="metric-card rework-border">Rework AVG<br><h2 style="color:#ef4444;">{calculate_avg(df, "Floorplan Queue", True)}</h2></div>', unsafe_allow_html=True)
         with c2: st.markdown(f'<div class="metric-card fp-border">FP AVG<br><h2 style="color:#3b82f6;">{calculate_avg(df, "Floorplan Queue")}</h2></div>', unsafe_allow_html=True)
@@ -141,39 +139,46 @@ try:
         with tab2:
             st.subheader("Detailed Team Performance")
             team_sum = df.groupby(['Team', 'Shift']).agg(
-                Present=('Name', 'nunique'), Rework=('Job Type', lambda x: x.str.lower().eq('rework').sum()),
-                FP=('Product', lambda x: x.str.lower().eq('floorplan queue').sum()), MRP=('Product', lambda x: x.str.lower().eq('measurement queue').sum()),
-                CAD=('Product', lambda x: x.str.lower().eq('autocad queue').sum()), Orders=('Ticket ID', 'count'),
-                Time=('Time', 'sum'), SQM=('SQM', 'sum')
+                Present=('Name', 'nunique'),
+                Rework=('Job Type', lambda x: x.str.lower().eq('rework').sum()),
+                FP=('Product', lambda x: x.str.lower().eq('floorplan queue').sum()),
+                MRP=('Product', lambda x: x.str.lower().eq('measurement queue').sum()),
+                CAD=('Product', lambda x: x.str.lower().eq('autocad queue').sum()),
+                UA=('Product', lambda x: x.str.lower().eq('urban angles').sum()),
+                VanBree=('Product', lambda x: x.str.lower().eq('van bree media').sum()),
+                Orders=('Ticket ID', 'count'),
+                Time=('Time', 'sum'),
+                SQM=('SQM', 'sum')
             ).reset_index()
             st.dataframe(team_sum, use_container_width=True, hide_index=True)
             
             st.subheader("Performance Breakdown Section (Artist Summary)")
             art_sum = df.groupby(['Name', 'Team', 'Shift']).agg(
-                Order=('Ticket ID', 'count'), Time=('Time', 'sum'), worked_days=('date', 'nunique'),
-                Rework=('Job Type', lambda x: x.str.lower().eq('rework').sum()), SQM=('SQM', 'sum')
+                Order=('Ticket ID', 'count'),
+                Time=('Time', 'sum'),
+                worked_days=('date', 'nunique'),
+                Rework=('Job Type', lambda x: x.str.lower().eq('rework').sum()),
+                SQM=('SQM', 'sum')
             ).reset_index()
             art_sum['Idle'] = (art_sum['worked_days'] * 400) - art_sum['Time']
             art_sum['Idle'] = art_sum['Idle'].apply(lambda x: max(0, int(x)))
-            st.dataframe(art_sum.sort_values('Order', ascending=False), use_container_width=True, hide_index=True)
+            cols_order = ['Name', 'Team', 'Shift', 'Order', 'Time', 'Idle', 'Rework', 'SQM']
+            st.dataframe(art_sum[cols_order].sort_values('Order', ascending=False), use_container_width=True, hide_index=True)
 
         with tab3:
             if artist_selected == "All Artists":
                 st.info("👈 Please select a specific Artist from the sidebar to see detailed analysis.")
             else:
                 st.subheader(f"Detailed Stats for: {artist_selected}")
-                
-                # আর্টিস্টের পারফরম্যান্স ডায়াগ্রাম এবং বিস্তারিত ইনসাইট
-                ca1, ca2 = st.columns(2)
-                with ca1:
-                    st.subheader("Work Distribution")
+                col_g1, col_g2 = st.columns([1, 1])
+                with col_g1:
                     proj_counts = df.groupby('Product').size().reset_index(name='Unique Orders')
                     fig_art = px.bar(proj_counts, x='Product', y='Unique Orders', text='Unique Orders', 
                                      color='Product', height=400, color_discrete_sequence=px.colors.qualitative.Pastel)
                     fig_art.update_traces(textposition='outside')
                     st.plotly_chart(fig_art, use_container_width=True)
                 
-                with ca2:
+                with col_g2:
                     st.subheader("Efficiency: Time vs SQM")
                     fig_scatter = px.scatter(df, x='SQM', y='Time', color='Product', 
                                              hover_data=['Ticket ID', 'date'], height=400)
