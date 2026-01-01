@@ -37,16 +37,16 @@ def get_data():
     spreadsheet = client.open_by_key(sheet_id)
     df = pd.DataFrame(spreadsheet.worksheet("DATA").get_all_records())
     
-    # কলাম ক্লিন করা
+    # কলামের নাম ক্লিন করা
     df.columns = [c.strip() for c in df.columns]
     
-    # ডাটা টাইপ ঠিক করা
+    # ডাটা টাইপ কনভার্ট করা
     df['date'] = pd.to_datetime(df['date'], errors='coerce').dt.date
     df['Time'] = pd.to_numeric(df['Time'], errors='coerce').fillna(0)
     df['SQM'] = pd.to_numeric(df['SQM'], errors='coerce').fillna(0)
     
-    # টেক্সট কলাম ক্লিন করা
-    text_cols = ['Product', 'Job Type', 'Employee Type', 'Team', 'Name', 'Shift', 'Labels']
+    # টেক্সট ক্লিন করা (বাড়তি স্পেস রিমুভ)
+    text_cols = ['Product', 'Job Type', 'Employee Type', 'Team', 'Name', 'Shift']
     for col in text_cols:
         if col in df.columns:
             df[col] = df[col].astype(str).str.strip()
@@ -56,7 +56,7 @@ def get_data():
 try:
     df_raw = get_data()
 
-    # --- ৩. সাইডবার ন্যাভিগেশন ও গ্লোবাল ফিল্টারস ---
+    # --- ৩. সাইডবার ন্যাভিগেশন ও গ্লোবাল ফিল্টার ---
     st.sidebar.markdown("# 🧭 Navigation")
     page = st.sidebar.radio("Select Dashboard", ["Main Dashboard", "Performance Tracking"])
     st.sidebar.markdown("---")
@@ -68,16 +68,14 @@ try:
     team_list = ["All"] + sorted(df_raw['Team'].unique().tolist())
     team_selected = st.sidebar.selectbox("Team Name", team_list)
     
-    shift_list = ["All"] + sorted(df_raw['Shift'].unique().tolist())
-    shift_selected = st.sidebar.selectbox("Shift", shift_list)
+    shift_selected = st.sidebar.selectbox("Shift", ["All"] + sorted(df_raw['Shift'].unique().tolist()))
+    emp_type_selected = st.sidebar.selectbox("Employee Type", ["All", "Artist", "QC"])
     
-    emp_type_list = ["All"] + sorted(df_raw['Employee Type'].unique().tolist())
-    emp_type_selected = st.sidebar.selectbox("Employee Type", emp_type_list)
-    
+    # Product Type Filter
     product_list = ["All", "Floorplan Queue", "Measurement Queue", "Autocad Queue", "Rework", "Urban Angles", "Van Bree Media"]
     product_selected_global = st.sidebar.selectbox("Product Type Filter", product_list)
 
-    # ডাটা ফিল্টারিং (Global)
+    # ডাটা ফিল্টারিং (Global Mask)
     mask = (df_raw['date'] >= start_date) & (df_raw['date'] <= end_date)
     if team_selected != "All": mask &= (df_raw['Team'] == team_selected)
     if shift_selected != "All": mask &= (df_raw['Shift'] == shift_selected)
@@ -85,7 +83,7 @@ try:
     if product_selected_global != "All": mask &= (df_raw['Product'] == product_selected_global)
     df = df_raw[mask].copy()
 
-    # --- ৪. ম্যান-ডে এভারেজ ক্যালকুলেশন ---
+    # --- ৪. ম্যান-ডে এভারেজ ক্যালকুলেশন (গুগল শিট ফর্মুলা অনুযায়ী) ---
     def calculate_man_day_avg(target_df, p_name, j_type="Live Job"):
         subset = target_df[(target_df['Product'] == p_name) & (target_df['Job Type'] == j_type)]
         if subset.empty: return 0.0
@@ -93,7 +91,7 @@ try:
         man_days = subset.groupby(['Name', 'date']).size().shape[0]
         return round(total_tasks / man_days, 2) if man_days > 0 else 0.0
 
-    # --- ৫. মেইন ড্যাশবোর্ড ---
+    # --- ৫. মেইন ড্যাশবোর্ড পেজ ---
     if page == "Main Dashboard":
         st.title("📊 PERFORMANCE ANALYTICS 2025")
         
@@ -115,10 +113,10 @@ try:
         with c7: st.markdown(f'<div class="metric-card total-card">Total Order<br><h2>{len(df)}</h2></div>', unsafe_allow_html=True)
 
         st.markdown("<br>", unsafe_allow_html=True)
-        col_left, col_right = st.columns([1.8, 1])
+        col_left, col_right = st.columns([2, 1])
 
         with col_left:
-            # --- TEAM SUMMARY (সব কলাম ফিক্স করা হয়েছে) ---
+            # --- ৫.১ TEAM SUMMARY (এখন সব কলাম থাকবে) ---
             st.subheader("Team Summary")
             team_sum = df.groupby(['Team', 'Shift']).agg(
                 Present=('Name', 'nunique'),
@@ -132,11 +130,10 @@ try:
                 Time=('Time', 'sum'),
                 SQM=('SQM', 'sum')
             ).reset_index()
-            # কলামের সিকোয়েন্স সাজানো
-            team_cols = ['Team', 'Shift', 'Present', 'Rework', 'FP', 'MRP', 'CAD', 'UA', 'VanBree', 'Orders', 'Time', 'SQM']
-            st.dataframe(team_sum[team_cols], use_container_width=True, hide_index=True)
+            # কলামগুলো সুন্দর করে সাজিয়ে দেখানো
+            st.dataframe(team_sum, use_container_width=True, hide_index=True)
             
-            # --- PERFORMANCE BREAKDOWN ---
+            # --- ৫.২ PERFORMANCE BREAKDOWN (আর্টিস্ট সামারি + Idle Time) ---
             st.subheader("Performance Breakdown Section (Artist Summary)")
             artist_breakdown = df.groupby(['Name', 'Team', 'Shift']).agg(
                 Order=('Ticket ID', 'count'),
@@ -150,27 +147,27 @@ try:
                 SQM=('SQM', 'sum'),
                 worked_days=('date', 'nunique')
             ).reset_index()
-            # Idle Time Logic
+
+            # Idle টাইম লজিক: (কাজ করা দিন * ৪০০) - মোট কাজের সময়
             artist_breakdown['Idle'] = (artist_breakdown['worked_days'] * 400) - artist_breakdown['Time']
             artist_breakdown['Idle'] = artist_breakdown['Idle'].apply(lambda x: max(0, x))
             
-            # আপনার গুগল শিট স্কোরিং লজিক অনুযায়ী সর্টিং
+            # স্কোরিং লজিক অনুযায়ী সর্টিং
             artist_breakdown['Score'] = artist_breakdown['Order'] + (artist_breakdown['Time'] / 1000000)
             artist_breakdown = artist_breakdown.sort_values(by='Score', ascending=False)
             
-            show_cols_breakdown = ['Name', 'Team', 'Shift', 'Order', 'Time', 'Idle', 'Rework', 'FP', 'MRP', 'UA', 'CAD', 'VanBree', 'SQM']
-            st.dataframe(artist_breakdown[show_cols_breakdown], use_container_width=True, hide_index=True)
+            final_breakdown_cols = ['Name', 'Team', 'Shift', 'Order', 'Time', 'Idle', 'Rework', 'FP', 'MRP', 'UA', 'CAD', 'VanBree', 'SQM']
+            st.dataframe(artist_breakdown[final_breakdown_cols], use_container_width=True, hide_index=True)
 
         with col_right:
-            # আর্টিস্ট সিলেকশন (টপ পারফর্মার অটোমেটিক)
-            artist_names = sorted(df['Name'].unique().tolist())
-            top_name = artist_breakdown['Name'].iloc[0] if not artist_breakdown.empty else ""
-            artist_selected = st.selectbox("Select Artist for Stats", artist_names, index=artist_names.index(top_name) if top_name in artist_names else 0)
+            # --- ৫.৩ আর্টিস্ট স্ট্যাটাস ও পাই চার্ট ---
+            unique_names = sorted(df['Name'].unique().tolist())
+            top_name = artist_breakdown.iloc[0]['Name'] if not artist_breakdown.empty else ""
+            artist_selected = st.selectbox("Select Artist for Stats", unique_names, index=unique_names.index(top_name) if top_name in unique_names else 0)
             
             artist_df = df[df['Name'] == artist_selected]
             if not artist_df.empty:
                 st.subheader(f"Stats: {artist_selected}")
-                # পাই চার্ট (অর্ডার কাউন্ট অনুযায়ী)
                 pie_data = artist_df['Product'].value_counts().reset_index()
                 pie_data.columns = ['Product', 'Unique Orders']
                 fig = px.pie(pie_data, values='Unique Orders', names='Product', hole=0.5, height=350)
@@ -180,7 +177,7 @@ try:
                 st.subheader("Artist Performance Detail")
                 detail_df = artist_df.copy()
                 detail_df['date'] = detail_df['date'].apply(lambda x: x.strftime('%m/%d/%Y'))
-                # সব কলাম সাজানো
+                # সব কলাম সাজানো (Floor, Labels সহ)
                 detail_cols = ['date', 'Ticket ID', 'Product', 'SQM', 'Floor', 'Labels', 'Time']
                 st.dataframe(detail_df[detail_cols].rename(columns={'date':'Date', 'Ticket ID':'Order ID'}), use_container_width=True, hide_index=True)
 
@@ -199,8 +196,6 @@ try:
         elif criteria == "High Time vs SQM": tdf = tdf[high_time_sqm_mask]
 
         st.metric("Total Jobs Found", len(tdf))
-        # তারিখ সুন্দর করে দেখানো
-        tdf['date'] = pd.to_datetime(tdf['date']).dt.strftime('%m/%d/%Y')
         st.dataframe(tdf, use_container_width=True, hide_index=True)
 
 except Exception as e:
