@@ -169,60 +169,53 @@ try:
             # ওই নির্দিষ্ট আর্টিস্টের ডাটা ফিল্টার
             a_df = df[df['Name'] == a_sel]
 
-            # ২. আর্টিস্ট স্পেসিফিক কার্ড মেট্রিক্স (আগের জেনারেল কার্ডের বদলে এখানে শুধু ওই আর্টিস্টের ডাটা)
-            st.markdown(f"### 📊 Individual Performance: {a_sel}")
+            # ২. ডায়নামিক মেট্রিক্স (আর্টিস্ট অনুযায়ী এভারেজ)
+            st.markdown(f"#### 📊 Personal Performance Summary: {a_sel}")
             ma1, ma2, ma3, ma4, ma5, ma6 = st.columns(6)
+            
+            # এখানে calculate_man_day_avg ফাংশনটি a_df দিয়ে কল করা হয়েছে যাতে শুধু ওই আর্টিস্টের রেজাল্ট আসে
             with ma1: st.metric("Rework AVG", calculate_man_day_avg(a_df, "Floorplan Queue", "Rework"))
             with ma2: st.metric("FP AVG", calculate_man_day_avg(a_df, "Floorplan Queue", "Live Job"))
             with ma3: st.metric("MRP AVG", calculate_man_day_avg(a_df, "Measurement Queue", "Live Job"))
             with ma4: st.metric("CAD AVG", calculate_man_day_avg(a_df, "Autocad Queue", "Live Job"))
-            with ma5: st.metric("Total SQM", round(a_df['SQM'].sum(), 2))
+            with ma5: st.metric("Total SQM", round(a_df['SQM'].sum(), 1))
             with ma6: st.metric("Total Orders", len(a_df))
-
+            
             st.markdown("---")
 
             # ৩. চার্ট সেকশন (এক সারিতে দুটি চার্ট)
-            col_chart1, col_chart2 = st.columns(2)
-
-            with col_chart1:
+            col_a1, col_a2 = st.columns(2)
+            
+            with col_a1:
                 st.subheader("Product Distribution")
                 p_data = a_df['Product'].value_counts().reset_index()
                 p_data.columns = ['Product', 'Unique Orders']
                 fig_bar = px.bar(p_data, x='Product', y='Unique Orders', text='Unique Orders', 
-                                 color='Product', color_discrete_sequence=px.colors.qualitative.Set3)
-                fig_bar.update_layout(showlegend=False, height=400)
+                                 color='Product', color_discrete_sequence=px.colors.qualitative.Pastel)
+                fig_bar.update_traces(textposition='outside')
                 st.plotly_chart(fig_bar, use_container_width=True)
 
-            with col_chart2:
-                st.subheader("Efficiency: SQM vs Time")
-                # SQM এবং Time এর রিলেশন দেখানোর জন্য স্ক্যাটার চার্ট
-                fig_scatter = px.scatter(a_df, x='SQM', y='Time', color='Product',
-                                         hover_data=['Ticket ID', 'date'],
-                                         trendline="ols", # ট্রেন্ডলাইন অপশনাল, ডাটা বেশি হলে ভালো দেখায়
-                                         title="Time spent based on SQM size")
-                fig_scatter.update_layout(height=400)
-                st.plotly_chart(fig_scatter, use_container_width=True)
+            with col_a2:
+                st.subheader("SQM vs Time Analysis")
+                if not a_df.empty:
+                    # SQM এর সাথে টাইমের সম্পর্ক দেখানোর জন্য স্ক্যাটার প্লট
+                    fig_scatter = px.scatter(a_df, x='SQM', y='Time', color='Product', 
+                                             hover_data=['Ticket ID'], 
+                                             title="How Time changes with SQM size")
+                    st.plotly_chart(fig_scatter, use_container_width=True)
 
-            # ৪. ডেইলি প্রোডাক্টিভিটি ট্রেন্ড (আর্টিস্টের জন্য আলাদা)
-            st.subheader(f"Daily Productivity Trend of {a_sel}")
-            a_trend = a_df.groupby('date').size().reset_index(name='Orders')
-            fig_a_trend = px.area(a_trend, x='date', y='Orders', markers=True, 
-                                  line_shape='spline', color_discrete_sequence=['#10b981'])
-            fig_a_trend.update_layout(height=300)
-            st.plotly_chart(fig_a_trend, use_container_width=True)
-
-            # ৫. পারফরম্যান্স লগ (নিচের সারিতে)
+            # ৪. পারফরম্যান্স লগ (নিচে নামানো হয়েছে)
             st.markdown("---")
             st.subheader("📋 Performance Detail Log")
             log_df = a_df.copy()
             log_df['date'] = log_df['date'].apply(lambda x: x.strftime('%m/%d/%Y'))
-            # এফিসিয়েন্সি কলাম যোগ করা (Time/SQM)
-            log_df['Time/SQM'] = (log_df['Time'] / log_df['SQM']).replace([float('inf'), -float('inf')], 0).round(2)
             
-            detail_cols = ['date', 'Ticket ID', 'Product', 'SQM', 'Time', 'Time/SQM', 'Floor', 'Labels']
+            # এফিসিয়েন্সি বোঝার জন্য নতুন কলাম (Time/SQM)
+            log_df['Efficiency (T/S)'] = (log_df['Time'] / log_df['SQM']).replace([float('inf'), -float('inf')], 0).fillna(0).round(2)
+            
+            detail_cols = ['date', 'Ticket ID', 'Product', 'SQM', 'Time', 'Efficiency (T/S)', 'Floor', 'Labels']
             st.dataframe(log_df[detail_cols].rename(columns={'date':'Date', 'Ticket ID':'Order ID'}), 
                          use_container_width=True, hide_index=True)
-
     # --- ৬. ট্র্যাকিং সিস্টেম ---
     elif "Tracking" in page:
         st.title("🎯 Tracking System")
@@ -242,4 +235,5 @@ try:
 
 except Exception as e:
     st.error(f"Something went wrong: {e}")
+
 
