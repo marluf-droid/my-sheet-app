@@ -91,17 +91,17 @@ try:
 
     # --- ৫. মেইন ড্যাশবোর্ড পেজ ---
     if "Dashboard" in page:
-        st.markdown("<h2 style='text-align: center; color: #0f172a;'>Performance Analytics 2025</h2>", unsafe_allow_html=True)
+        st.markdown("<h2 style='text-align: center; color: #0f172a;'>Performance Analytics</h2>", unsafe_allow_html=True)
         
         # কার্ড মেট্রিক্স
         m1, m2, m3, m4, m5, m6, m7 = st.columns(7)
-        with m1: st.markdown(f'<div class="metric-card rework-card">🔴 Rework AVG<br><h2>{calculate_man_day_avg(df, "Floorplan Queue", "Rework")}</h2></div>', unsafe_allow_html=True)
-        with m2: st.markdown(f'<div class="metric-card fp-card">🔵 FP AVG<br><h2>{calculate_man_day_avg(df, "Floorplan Queue", "Live Job")}</h2></div>', unsafe_allow_html=True)
-        with m3: st.markdown(f'<div class="metric-card mrp-border m-card mrp-card">🟢 MRP AVG<br><h2>{calculate_man_day_avg(df, "Measurement Queue", "Live Job")}</h2></div>', unsafe_allow_html=True)
-        with m4: st.markdown(f'<div class="metric-card cad-card">🟡 CAD AVG<br><h2>{calculate_man_day_avg(df, "Autocad Queue", "Live Job")}</h2></div>', unsafe_allow_html=True)
-        with m5: st.markdown(f'<div class="metric-card ua-card">🟣 UA AVG<br><h2>{calculate_man_day_avg(df, "Urban Angles", "Live Job")}</h2></div>', unsafe_allow_html=True)
-        with m6: st.markdown(f'<div class="metric-card vanbree-card">🟠 Van Bree<br><h2>{calculate_man_day_avg(df, "Van Bree Media", "Live Job")}</h2></div>', unsafe_allow_html=True)
-        with m7: st.markdown(f'<div class="metric-card total-card">⚪ Total Order<br><h2>{len(df)}</h2></div>', unsafe_allow_html=True)
+        with m1: st.markdown(f'<div class="metric-card rework-card"> Rework AVG<br><h2>{calculate_man_day_avg(df, "Floorplan Queue", "Rework")}</h2></div>', unsafe_allow_html=True)
+        with m2: st.markdown(f'<div class="metric-card fp-card"> FP AVG<br><h2>{calculate_man_day_avg(df, "Floorplan Queue", "Live Job")}</h2></div>', unsafe_allow_html=True)
+        with m3: st.markdown(f'<div class="metric-card mrp-border m-card mrp-card"> MRP AVG<br><h2>{calculate_man_day_avg(df, "Measurement Queue", "Live Job")}</h2></div>', unsafe_allow_html=True)
+        with m4: st.markdown(f'<div class="metric-card cad-card"> CAD AVG<br><h2>{calculate_man_day_avg(df, "Autocad Queue", "Live Job")}</h2></div>', unsafe_allow_html=True)
+        with m5: st.markdown(f'<div class="metric-card ua-card"> UA AVG<br><h2>{calculate_man_day_avg(df, "Urban Angles", "Live Job")}</h2></div>', unsafe_allow_html=True)
+        with m6: st.markdown(f'<div class="metric-card vanbree-card"> Van Bree<br><h2>{calculate_man_day_avg(df, "Van Bree Media", "Live Job")}</h2></div>', unsafe_allow_html=True)
+        with m7: st.markdown(f'<div class="metric-card total-card"> Total Order<br><h2>{len(df)}</h2></div>', unsafe_allow_html=True)
 
         st.markdown("<br>", unsafe_allow_html=True)
         
@@ -203,3 +203,4 @@ try:
 
 except Exception as e:
     st.error(f"Error loading dashboard: {e}")
+
