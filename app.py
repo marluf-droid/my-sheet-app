@@ -5,27 +5,27 @@ from oauth2client.service_account import ServiceAccountCredentials
 import plotly.express as px
 import json
 
-# --- ১. পেজ সেটিংস ও স্মার্ট ডিজাইন (ন্যাভিগেশন বার ফিক্সড করা হয়েছে) ---
+# --- ১. পেজ সেটিংস ও ডিজাইন লক করা (ন্যাভিগেশন বার ফিক্সড) ---
 st.set_page_config(
     page_title="Performance Analytics 2025", 
     layout="wide",
-    initial_sidebar_state="expanded" # অ্যাপ খুললেই সাইডবার খোলা থাকবে
+    initial_sidebar_state="expanded" # অ্যাপ ওপেন হলে ন্যাভিগেশন বার খোলা থাকবে
 )
 
 st.markdown("""
     <style>
-    /* ১. গিটহাব আইকন, ডিপ্লয় বাটন এবং থ্রি-ডট মেনু পুরোপুরি হাইড করা */
+    /* ১. গিটহাব, ফর্ক এবং ডিপ্লয় বাটন হাইড করা (ন্যাভিগেশন বাটনটি রেখে) */
     .stDeployButton {display:none !important;}
     #MainMenu {visibility: hidden;}
     footer {visibility: hidden;}
     [data-testid="stDecoration"] {display:none !important;}
     
-    /* রাইট সাইডবার টুলবার (গিটহাব আইকন) হাইড করা কিন্তু বাম পাশের মেনু বাটন রাখা */
+    /* রাইট সাইডবার টুলবার (গিটহাব আইকন) হাইড করা কিন্তু বাম পাশের মেনু বাটন বজায় রাখা */
     [data-testid="stHeader"] [data-testid="stToolbar"] {
         display: none !important;
     }
 
-    /* ২. আধুনিক ফন্ট এবং মেট্রিক কার্ড ডিজাইন (লক করা হয়েছে) */
+    /* ২. আধুনিক ফন্ট এবং মেট্রিক কার্ড ডিজাইন */
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
     html, body, [class*="css"] { font-family: 'Inter', sans-serif; }
 
@@ -61,18 +61,15 @@ def get_data():
     sheet_id = "1e-3jYxjPkXuxkAuSJaIJ6jXU0RT1LemY6bBQbCTX_6Y"
     spreadsheet = client.open_by_key(sheet_id)
     df = pd.DataFrame(spreadsheet.worksheet("DATA").get_all_records())
-    
     df.columns = [c.strip() for c in df.columns]
     df['date'] = pd.to_datetime(df['date'], errors='coerce').dt.date
     df['Time'] = pd.to_numeric(df['Time'], errors='coerce').fillna(0)
     df['SQM'] = pd.to_numeric(df['SQM'], errors='coerce').fillna(0)
-    
     for col in ['Product', 'Job Type', 'Name', 'Team', 'Shift']:
         if col in df.columns:
             df[col] = df[col].astype(str).str.strip()
     return df
 
-# এভারেজ ক্যালকুলেশন ফাংশন
 def calculate_avg(target_df, product_name, is_rework=False):
     temp = target_df[target_df['Product'].str.lower() == product_name.lower()]
     if is_rework:
@@ -98,6 +95,10 @@ try:
     team_selected = st.sidebar.selectbox("Team Name", ["All"] + sorted(df_raw['Team'].unique().tolist()))
     shift_selected = st.sidebar.selectbox("Shift", ["All"] + sorted(df_raw['Shift'].unique().tolist()))
     emp_type_selected = st.sidebar.selectbox("Employee Type", ["All", "Artist", "QC"])
+    
+    # আর্টিস্ট ফিল্টার সাইডবারে রাখা হয়েছে যাতে এটি সব কার্ড নিয়ন্ত্রণ করতে পারে
+    artist_selected = st.sidebar.selectbox("Select Artist Filter (Global)", ["All Artists"] + sorted(df_raw['Name'].unique().tolist()))
+    
     product_filter = st.sidebar.selectbox("Product Filter", ["All"] + sorted(df_raw['Product'].unique().tolist()))
 
     # ফিল্টারিং লজিক
@@ -105,13 +106,15 @@ try:
     if team_selected != "All": mask &= (df_raw['Team'] == team_selected)
     if shift_selected != "All": mask &= (df_raw['Shift'] == shift_selected)
     if emp_type_selected != "All": mask &= (df_raw['Employee Type'] == emp_type_selected)
+    if artist_selected != "All Artists": mask &= (df_raw['Name'] == artist_selected)
     if product_filter != "All": mask &= (df_raw['Product'] == product_filter)
     df = df_raw[mask].copy()
 
     if view_mode == "📊 Dashboard":
-        st.markdown("<h1 style='text-align: center;'>Performance Analytics 2025</h1>", unsafe_allow_html=True)
+        # ৪. মেইন কার্ডস (এটি এখন অটোমেটিক আর্টিস্ট অনুযায়ী আপডেট হবে)
+        title_suffix = f" - {artist_selected}" if artist_selected != "All Artists" else ""
+        st.markdown(f"<h1 style='text-align: center;'>Performance Analytics {title_suffix}</h1>", unsafe_allow_html=True)
         
-        # কার্ড মেট্রিক্স
         c1, c2, c3, c4, c5, c6, c7 = st.columns(7)
         with c1: st.markdown(f'<div class="metric-card rework-border">Rework AVG<br><h2 style="color:#ef4444;">{calculate_avg(df, "Floorplan Queue", True)}</h2></div>', unsafe_allow_html=True)
         with c2: st.markdown(f'<div class="metric-card fp-border">FP AVG<br><h2 style="color:#3b82f6;">{calculate_avg(df, "Floorplan Queue")}</h2></div>', unsafe_allow_html=True)
@@ -138,62 +141,49 @@ try:
         with tab2:
             st.subheader("Detailed Team Performance")
             team_sum = df.groupby(['Team', 'Shift']).agg(
-                Present=('Name', 'nunique'),
-                Rework=('Job Type', lambda x: x.str.lower().eq('rework').sum()),
-                FP=('Product', lambda x: x.str.lower().eq('floorplan queue').sum()),
-                MRP=('Product', lambda x: x.str.lower().eq('measurement queue').sum()),
-                CAD=('Product', lambda x: x.str.lower().eq('autocad queue').sum()),
-                UA=('Product', lambda x: x.str.lower().eq('urban angles').sum()),
-                VanBree=('Product', lambda x: x.str.lower().eq('van bree media').sum()),
-                Orders=('Ticket ID', 'count'),
-                Time=('Time', 'sum'),
-                SQM=('SQM', 'sum')
+                Present=('Name', 'nunique'), Rework=('Job Type', lambda x: x.str.lower().eq('rework').sum()),
+                FP=('Product', lambda x: x.str.lower().eq('floorplan queue').sum()), MRP=('Product', lambda x: x.str.lower().eq('measurement queue').sum()),
+                CAD=('Product', lambda x: x.str.lower().eq('autocad queue').sum()), Orders=('Ticket ID', 'count'),
+                Time=('Time', 'sum'), SQM=('SQM', 'sum')
             ).reset_index()
             st.dataframe(team_sum, use_container_width=True, hide_index=True)
             
             st.subheader("Performance Breakdown Section (Artist Summary)")
             art_sum = df.groupby(['Name', 'Team', 'Shift']).agg(
-                Order=('Ticket ID', 'count'),
-                Time=('Time', 'sum'),
-                worked_days=('date', 'nunique'),
-                Rework=('Job Type', lambda x: x.str.lower().eq('rework').sum()),
-                FP=('Product', lambda x: x.str.lower().eq('floorplan queue').sum()),
-                MRP=('Product', lambda x: x.str.lower().eq('measurement queue').sum()),
-                UA=('Product', lambda x: x.str.lower().eq('urban angles').sum()),
-                CAD=('Product', lambda x: x.str.lower().eq('autocad queue').sum()),
-                VanBree=('Product', lambda x: x.str.lower().eq('van bree media').sum()),
-                SQM=('SQM', 'sum')
+                Order=('Ticket ID', 'count'), Time=('Time', 'sum'), worked_days=('date', 'nunique'),
+                Rework=('Job Type', lambda x: x.str.lower().eq('rework').sum()), SQM=('SQM', 'sum')
             ).reset_index()
             art_sum['Idle'] = (art_sum['worked_days'] * 400) - art_sum['Time']
             art_sum['Idle'] = art_sum['Idle'].apply(lambda x: max(0, int(x)))
-            cols_order = ['Name', 'Team', 'Shift', 'Order', 'Time', 'Idle', 'Rework', 'FP', 'MRP', 'UA', 'CAD', 'VanBree', 'SQM']
-            st.dataframe(art_sum[cols_order].sort_values('Order', ascending=False), use_container_width=True, hide_index=True)
+            st.dataframe(art_sum.sort_values('Order', ascending=False), use_container_width=True, hide_index=True)
 
         with tab3:
-            # আর্টিস্ট অ্যানালাইসিস ট্যাবে ড্রপডাউন ফিরে আনা হয়েছে
-            artist_selected = st.selectbox("Select Artist for Details", sorted(df['Name'].unique().tolist()))
-            artist_df = df[df['Name'] == artist_selected].copy()
-            if not artist_df.empty:
-                st.subheader(f"Stats: {artist_selected}")
+            if artist_selected == "All Artists":
+                st.info("👈 Please select a specific Artist from the sidebar to see detailed analysis.")
+            else:
+                st.subheader(f"Detailed Stats for: {artist_selected}")
                 
-                # আর্টিস্ট সিলেক্ট করলে উপরের কার্ডগুলোর মতো এই আর্টিস্টের পার্সোনাল এভারেজ দেখানো
-                ca1, ca2, ca3, ca4 = st.columns(4)
-                with ca1: st.metric("Personal Rework", calculate_avg(artist_df, "Floorplan Queue", True))
-                with ca2: st.metric("Personal FP AVG", calculate_avg(artist_df, "Floorplan Queue"))
-                with ca3: st.metric("Personal MRP AVG", calculate_avg(artist_df, "Measurement Queue"))
-                with ca4: st.metric("Total Jobs Done", len(artist_df))
-
-                col_c1, col_c2 = st.columns([1, 2])
-                with col_c1:
-                    proj_counts = artist_df.groupby('Product').size().reset_index(name='Unique Orders')
-                    fig_art = px.bar(proj_counts, x='Product', y='Unique Orders', text='Unique Orders', color='Product', height=400)
+                # আর্টিস্টের পারফরম্যান্স ডায়াগ্রাম এবং বিস্তারিত ইনসাইট
+                ca1, ca2 = st.columns(2)
+                with ca1:
+                    st.subheader("Work Distribution")
+                    proj_counts = df.groupby('Product').size().reset_index(name='Unique Orders')
+                    fig_art = px.bar(proj_counts, x='Product', y='Unique Orders', text='Unique Orders', 
+                                     color='Product', height=400, color_discrete_sequence=px.colors.qualitative.Pastel)
                     fig_art.update_traces(textposition='outside')
                     st.plotly_chart(fig_art, use_container_width=True)
-                with col_c2:
-                    st.subheader("Performance Detail Log")
-                    log_cols = ['date', 'Ticket ID', 'Product', 'SQM', 'Floor', 'Labels', 'Time']
-                    existing_cols = [c for c in log_cols if c in artist_df.columns]
-                    st.dataframe(artist_df[existing_cols].sort_values('date', ascending=False), use_container_width=True, hide_index=True)
+                
+                with ca2:
+                    st.subheader("Efficiency: Time vs SQM")
+                    fig_scatter = px.scatter(df, x='SQM', y='Time', color='Product', 
+                                             hover_data=['Ticket ID', 'date'], height=400)
+                    st.plotly_chart(fig_scatter, use_container_width=True)
+
+                st.markdown("---")
+                st.subheader("Performance Detail Log")
+                log_cols = ['date', 'Ticket ID', 'Product', 'SQM', 'Floor', 'Labels', 'Time']
+                existing_cols = [c for c in log_cols if c in df.columns]
+                st.dataframe(df[existing_cols].sort_values('date', ascending=False), use_container_width=True, hide_index=True)
 
     elif view_mode == "🔍 Tracking System":
         st.title("🎯 Performance Tracking System")
