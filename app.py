@@ -28,7 +28,11 @@ st.markdown("""
     .vanbree-border { border-top: 5px solid #06b6d4; background-color: #e6fffb; }
     .total-border { border-top: 5px solid #64748b; background-color: #f8fafc; }
     
-    .stTabs [data-baseweb="tab"] { font-weight: 700; font-size: 16px; padding: 10px 20px; }
+    .stTabs [data-baseweb="tab"] { font-weight: 700; font-size: 16px; padding: 10px 20px; } 
+    #MainMenu {visibility: hidden;}
+        header {visibility: hidden;}
+        footer {visibility: hidden;}
+        .stDeployButton {display:none;}
     </style>
     """, unsafe_allow_html=True)
 
@@ -201,3 +205,4 @@ try:
 
 except Exception as e:
     st.error(f"Something went wrong: {e}")
+
