@@ -14,15 +14,6 @@ st.set_page_config(
 
 st.markdown("""
     <style>
-    /* ১. শুধুমাত্র অপ্রয়োজনীয় আইকনগুলো হাইড করা (GitHub, Fork, Deploy) */
-    .stDeployButton {display:none !important;}
-    div[data-testid="stToolbar"] {display: none !important;}
-    div[data-testid="stDecoration"] {display: none !important;}
-    footer {visibility: hidden;}
-    
-    /* থ্রি-ডট মেনু হাইড করা কিন্তু ন্যাভিগেশন বাটন (Chevron) দেখানো */
-    #MainMenu {visibility: hidden;}
-
     /* ২. আধুনিক ডিজাইন এবং ফন্ট */
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
     html, body, [class*="css"] { font-family: 'Inter', sans-serif; }
@@ -196,3 +187,4 @@ try:
 
 except Exception as e:
     st.error(f"Something went wrong: {e}")
+
