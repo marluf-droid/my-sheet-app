@@ -36,9 +36,14 @@ def get_data():
     sheet_id = "1e-3jYxjPkXuxkAuSJaIJ6jXU0RT1LemY6bBQbCTX_6Y"
     spreadsheet = client.open_by_key(sheet_id)
     df = pd.DataFrame(spreadsheet.worksheet("DATA").get_all_records())
+    
+    # কলাম ক্লিন করা
     df.columns = [c.strip() for c in df.columns]
-    # সময় ছাড়া শুধু তারিখ রাখার জন্য
+    
+    # তারিখ ফরম্যাট ঠিক করা (সময় বাদ দিয়ে শুধু তারিখ)
     df['date'] = pd.to_datetime(df['date'], errors='coerce').dt.date
+    
+    # ডাটা টাইপ ঠিক করা
     df['Time'] = pd.to_numeric(df['Time'], errors='coerce').fillna(0)
     df['SQM'] = pd.to_numeric(df['SQM'], errors='coerce').fillna(0)
     return df
@@ -58,47 +63,51 @@ try:
     team_selected = st.sidebar.selectbox("Team Name", ["All"] + sorted(df_raw['Team'].unique().tolist()))
     shift_selected = st.sidebar.selectbox("Shift", ["All"] + sorted(df_raw['Shift'].unique().tolist()))
     emp_type_selected = st.sidebar.selectbox("Employee Type", ["All", "Artist", "QC"])
-    product_filter = st.sidebar.selectbox("Product Filter (Cards Only)", ["All", "Floorplan Queue", "Measurement Queue", "Autocad Queue", "Urban Angles", "Van Bree Media"])
 
-    # ডাটা ফিল্টারিং (Global)
+    # ডাটা ফিল্টারিং (গ্লোবাল মাস্ক)
     mask = (df_raw['date'] >= start_date) & (df_raw['date'] <= end_date)
     if team_selected != "All": mask &= (df_raw['Team'] == team_selected)
     if shift_selected != "All": mask &= (df_raw['Shift'] == shift_selected)
     if emp_type_selected != "All": mask &= (df_raw['Employee Type'] == emp_type_selected)
+    
     df = df_raw[mask]
 
-    # --- ৪. স্পেশাল ক্যালকুলেশন ফাংশন (গুগল শিট ফর্মুলা অনুযায়ী) ---
+    # --- ৪. আপনার গুগল শিট ফর্মুলা অনুযায়ী এভারেজ ক্যালকুলেশন ফাংশন ---
     def calculate_man_day_avg(target_df, product_name, job_type="Live Job"):
-        # ফিল্টার: নির্দিষ্ট প্রোডাক্ট এবং জব টাইপ (Live Job/Rework)
+        # ১. প্রোডাক্ট এবং জব টাইপ অনুযায়ী ফিল্টার (যেমন শিটের FILTER ফাংশন)
         subset = target_df[(target_df['Product'] == product_name) & (target_df['Job Type'] == job_type)]
         
         if subset.empty:
             return 0.0
         
+        # ২. টোটাল টাস্ক কাউন্ট (যেমন শিটের ROWS ফাংশন)
         total_tasks = len(subset)
-        # Man Days = ইউনিক (Name + Date) এর সংখ্যা
+        
+        # ৩. ম্যান-ডেস কাউন্ট (যেমন শিটের ROWS(UNIQUE(D:E)) ফাংশন যেখানে D=Name, E=Date)
+        # এটি বের করে কতজন ইউনিক মানুষ কত দিন কাজ করেছে তার জোড়া
         man_days = subset.groupby(['Name', 'date']).size().shape[0]
         
+        # ৪. গড় বের করা
         return round(total_tasks / man_days, 2) if man_days > 0 else 0.0
 
     # --- ৫. মেইন ড্যাশবোর্ড ---
     if page == "Main Dashboard":
         st.title("📊 PERFORMANCE ANALYTICS 2025")
         
-        # কার্ড মেট্রিক্স ক্যালকুলেশন
+        # আপনার ফর্মুলা অনুযায়ী ক্যালকুলেশন
+        avg_rework = calculate_man_day_avg(df, "Floorplan Queue", "Rework")
         avg_fp = calculate_man_day_avg(df, "Floorplan Queue", "Live Job")
         avg_mrp = calculate_man_day_avg(df, "Measurement Queue", "Live Job")
         avg_cad = calculate_man_day_avg(df, "Autocad Queue", "Live Job")
-        avg_rework = calculate_man_day_avg(df, "Floorplan Queue", "Rework") # আপনার ফর্মুলা অনুযায়ী
         avg_ua = calculate_man_day_avg(df, "Urban Angles", "Live Job")
         avg_vanbree = calculate_man_day_avg(df, "Van Bree Media", "Live Job")
 
-        # কালারফুল কার্ড রেন্ডারিং
+        # কার্ডগুলো দেখানো হচ্ছে
         c1, c2, c3, c4, c5, c6, c7 = st.columns(7)
-        with c1: st.markdown(f'<div class="metric-card fp-card">FP AVG<br><h2>{avg_fp}</h2></div>', unsafe_allow_html=True)
-        with c2: st.markdown(f'<div class="metric-card mrp-card">MRP AVG<br><h2>{avg_mrp}</h2></div>', unsafe_allow_html=True)
-        with c3: st.markdown(f'<div class="metric-card cad-card">CAD AVG<br><h2>{avg_cad}</h2></div>', unsafe_allow_html=True)
-        with c4: st.markdown(f'<div class="metric-card rework-card">Rework AVG<br><h2>{avg_rework}</h2></div>', unsafe_allow_html=True)
+        with c1: st.markdown(f'<div class="metric-card rework-card">Rework AVG<br><h2>{avg_rework}</h2></div>', unsafe_allow_html=True)
+        with c2: st.markdown(f'<div class="metric-card fp-card">FP AVG<br><h2>{avg_fp}</h2></div>', unsafe_allow_html=True)
+        with c3: st.markdown(f'<div class="metric-card mrp-card">MRP AVG<br><h2>{avg_mrp}</h2></div>', unsafe_allow_html=True)
+        with c4: st.markdown(f'<div class="metric-card cad-card">CAD AVG<br><h2>{avg_cad}</h2></div>', unsafe_allow_html=True)
         with c5: st.markdown(f'<div class="metric-card ua-card">UA AVG<br><h2>{avg_ua}</h2></div>', unsafe_allow_html=True)
         with c6: st.markdown(f'<div class="metric-card vanbree-card">Van Bree<br><h2>{avg_vanbree}</h2></div>', unsafe_allow_html=True)
         with c7: st.markdown(f'<div class="metric-card total-card">Total Order<br><h2>{len(df)}</h2></div>', unsafe_allow_html=True)
@@ -117,31 +126,38 @@ try:
                 MRP=('Product', lambda x: (x == 'Measurement Queue').sum())
             ).reset_index()
             st.dataframe(team_sum, use_container_width=True, hide_index=True)
+            
             st.subheader("Performance Breakdown Section")
-            st.dataframe(df.head(200), use_container_width=True, hide_index=True)
+            # Breakdown এ টাইম এবং অন্যান্য কলামের সঠিক ডাটা
+            st.dataframe(df[['Name', 'Team', 'Shift', 'Ticket ID', 'Time', 'Product', 'SQM', 'Job Type']].head(200), use_container_width=True, hide_index=True)
 
         with col_right:
-            top_artist = df.groupby('Name')['Ticket ID'].count().sort_values(ascending=False).index[0] if not df.empty else "None"
-            artist_selected = st.sidebar.selectbox("Artist Detail Selection", sorted(df['Name'].unique().tolist()), index=0)
-            artist_df = df[df['Name'] == artist_selected]
+            # আর্টিস্ট সিলেকশন (Default Top)
+            if not df.empty:
+                top_name = df.groupby('Name')['Ticket ID'].count().sort_values(ascending=False).index[0]
+                artist_selected = st.sidebar.selectbox("Artist Detail Selection", sorted(df['Name'].unique().tolist()), index=sorted(df['Name'].unique().tolist()).index(top_name))
+            else:
+                artist_selected = "None"
             
+            artist_df = df[df['Name'] == artist_selected]
             if not artist_df.empty:
                 st.subheader(f"Stats: {artist_selected}")
                 fig = px.pie(artist_df, values='Ticket ID', names='Product', hole=0.5, height=350)
                 fig.update_traces(textinfo='value+label')
                 st.plotly_chart(fig, use_container_width=True)
+                
                 st.subheader("Individual Performance Detail")
                 detail_t = artist_df[['date', 'Ticket ID', 'Product', 'SQM', 'Time']].copy()
                 detail_t.columns = ['Date', 'ID', 'Product', 'SQM', 'Time']
                 st.dataframe(detail_t, use_container_width=True, hide_index=True)
 
-    # --- ৬. পারফরম্যান্স ট্র্যাকিং পেজ ---
+    # --- ৬. পারফরম্যান্স ট্র্যাকিং পেজ (আপনার কুয়েরি লজিক) ---
     elif page == "Performance Tracking":
         st.title("🎯 PERFORMANCE TRACKING")
         criteria = st.selectbox("Criteria Selection", ["All", "Short IP", "Spending More Time", "High Time vs SQM"])
         tdf = df.copy()
         
-        # আপনার QUERY ফর্মুলা অনুযায়ী কন্ডিশন
+        # আপনার শিটের ফর্মুলা অনুযায়ী লজিক
         short_ip_mask = (((tdf['Employee Type'] == 'QC') & (tdf['Time'] < 2)) | ((tdf['Employee Type'] == 'Artist') & (((tdf['Product'] == 'Floorplan Queue') & (tdf['Time'] <= 15)) | ((tdf['Product'] == 'Measurement Queue') & (tdf['Time'] < 5)) | (~tdf['Product'].isin(['Floorplan Queue', 'Measurement Queue']) & (tdf['Time'] <= 10)))))
         spending_more_mask = (((tdf['Employee Type'] == 'QC') & (tdf['Time'] > 20)) | ((tdf['Employee Type'] == 'Artist') & ((tdf['Time'] >= 150) | ((tdf['Product'] == 'Measurement Queue') & (tdf['Time'] > 40)))))
         high_time_sqm_mask = (tdf['Time'] > (tdf['SQM'] + 15)) & ~spending_more_mask
