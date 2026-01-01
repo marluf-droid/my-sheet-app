@@ -5,14 +5,14 @@ from oauth2client.service_account import ServiceAccountCredentials
 import plotly.express as px
 import json
 
-# --- ১. পেজ সেটিংস ---
+# --- ১. পেজ সেটিংস ও ডিজাইন ---
 st.set_page_config(
     page_title="Performance Analytics 2025", 
     layout="wide",
     initial_sidebar_state="expanded"
 )
 
-# মেট্রিক কার্ডের জন্য ক্লিন CSS (এখানে কোনো কিছু হাইড করা হয়নি)
+# মেট্রিক কার্ড এবং টেবিল ডিজাইন (কোনো কিছু হাইড করা হয়নি)
 st.markdown("""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
@@ -51,7 +51,6 @@ def get_data():
     spreadsheet = client.open_by_key(sheet_id)
     df = pd.DataFrame(spreadsheet.worksheet("DATA").get_all_records())
     
-    # কলাম ক্লিন করা
     df.columns = [c.strip() for c in df.columns]
     df['date'] = pd.to_datetime(df['date'], errors='coerce').dt.date
     df['Time'] = pd.to_numeric(df['Time'], errors='coerce').fillna(0)
@@ -76,7 +75,7 @@ def calculate_avg(target_df, product_name, is_rework=False):
 try:
     df_raw = get_data()
 
-    # --- ৩. সাইডবার ফিল্টার ও নেভিগেশন ---
+    # --- ৩. সাইডবার ফিল্টার ---
     st.sidebar.title("🧭 Navigation")
     view_mode = st.sidebar.radio("Go to", ["📊 Dashboard", "🔍 Tracking System"])
     st.sidebar.markdown("---")
@@ -88,13 +87,9 @@ try:
     team_selected = st.sidebar.selectbox("Team Name", ["All"] + sorted(df_raw['Team'].unique().tolist()))
     shift_selected = st.sidebar.selectbox("Shift", ["All"] + sorted(df_raw['Shift'].unique().tolist()))
     emp_type_selected = st.sidebar.selectbox("Employee Type", ["All", "Artist", "QC"])
-    
-    # এটি আর্টিস্ট অনুযায়ী টপ কার্ডগুলোকে ফিল্টার করবে
     artist_global = st.sidebar.selectbox("Select Artist (Global View)", ["All Artists"] + sorted(df_raw['Name'].unique().tolist()))
-    
     product_filter = st.sidebar.selectbox("Product Filter", ["All"] + sorted(df_raw['Product'].unique().tolist()))
 
-    # ডাটা ফিল্টারিং
     mask = (df_raw['date'] >= start_date) & (df_raw['date'] <= end_date)
     if team_selected != "All": mask &= (df_raw['Team'] == team_selected)
     if shift_selected != "All": mask &= (df_raw['Shift'] == shift_selected)
@@ -118,7 +113,7 @@ try:
         with c7: st.markdown(f'<div class="metric-card total-border">Total Order<br><h2 style="color:#64748b;">{len(df)}</h2></div>', unsafe_allow_html=True)
 
         st.markdown("<br>", unsafe_allow_html=True)
-        tab1, tab2, tab3 = st.tabs(["📉 Overview & Trend", "👥 Team Summary", "🎨 Artist Analysis"])
+        tab1, tab2, tab3 = st.tabs(["📉 Overview & Trend", "👥 Team & Artist Summary", "🎨 Artist Analysis"])
 
         with tab1:
             col_t1, col_t2 = st.columns([2, 1])
@@ -132,6 +127,7 @@ try:
                 for i, row in enumerate(leader_df.itertuples(), 1):
                     st.info(f"{i}. **{row.Name}** - {row.Orders} Orders")
 
+        # --- ট্যাব ২: আপনার চাহিদামত সব কলাম ফিরিয়ে আনা হয়েছে ---
         with tab2:
             st.subheader("Detailed Team Performance")
             team_sum = df.groupby(['Team', 'Shift']).agg(
@@ -152,16 +148,26 @@ try:
             art_sum = df.groupby(['Name', 'Team', 'Shift']).agg(
                 Order=('Ticket ID', 'count'),
                 Time=('Time', 'sum'),
-                Days=('date', 'nunique'),
+                worked_days=('date', 'nunique'),
                 Rework=('Job Type', lambda x: x.str.lower().eq('rework').sum()),
+                FP=('Product', lambda x: x.str.lower().eq('floorplan queue').sum()),
+                MRP=('Product', lambda x: x.str.lower().eq('measurement queue').sum()),
+                UA=('Product', lambda x: x.str.lower().eq('urban angles').sum()),
+                CAD=('Product', lambda x: x.str.lower().eq('autocad queue').sum()),
+                VanBree=('Product', lambda x: x.str.lower().eq('van bree media').sum()),
                 SQM=('SQM', 'sum')
             ).reset_index()
-            art_sum['Idle'] = (art_sum['Days'] * 400) - art_sum['Time']
+            
+            # Idle Time ক্যালকুলেশন
+            art_sum['Idle'] = (art_sum['worked_days'] * 400) - art_sum['Time']
             art_sum['Idle'] = art_sum['Idle'].apply(lambda x: max(0, int(x)))
-            st.dataframe(art_sum.sort_values('Order', ascending=False), use_container_width=True, hide_index=True)
+            
+            # কলামগুলো সাজানো এবং সর্বোচ্চ অর্ডারের আর্টিস্টকে উপরে রাখা
+            cols_order = ['Name', 'Team', 'Shift', 'Order', 'Time', 'Idle', 'Rework', 'FP', 'MRP', 'UA', 'CAD', 'VanBree', 'SQM']
+            # Sorting by Order (Descending)
+            st.dataframe(art_sum[cols_order].sort_values(by=['Order', 'Time'], ascending=[False, True]), use_container_width=True, hide_index=True)
 
         with tab3:
-            # যদি সাইডবারে কোনো স্পেসিফিক আর্টিস্ট সিলেক্ট না থাকে
             if artist_global == "All Artists":
                 artist_selected = st.selectbox("Select Artist for Analysis", sorted(df['Name'].unique().tolist()))
             else:
