@@ -9,7 +9,7 @@ import json
 # --- ১. পেজ সেটিংস ---
 st.set_page_config(page_title="Performance Analytics", layout="wide")
 
-# ডিজাইন স্টাইল (সব আইকন রিমুভ করা হয়েছে)
+# আধুনিক ক্লিন CSS
 st.markdown("""
     <style>
     .metric-card { 
@@ -53,7 +53,7 @@ def get_data():
 try:
     df_raw = get_data()
 
-    # --- ৩. সাইডবার ন্যাভিগেশন (আইকন ছাড়া) ---
+    # --- ৩. সাইডবার ন্যাভিগেশন ---
     st.sidebar.markdown("## Navigation")
     page = st.sidebar.radio("Go to", ["Dashboard", "Tracking System"])
     st.sidebar.markdown("---")
@@ -62,7 +62,8 @@ try:
     start_date = st.sidebar.date_input("Start Date", df_raw['date'].min())
     end_date = st.sidebar.date_input("End Date", df_raw['date'].max())
     
-    team_selected = st.sidebar.selectbox("Team Name", ["All"] + sorted(df_raw['Team'].unique().tolist()))
+    team_list = ["All"] + sorted(df_raw['Team'].unique().tolist())
+    team_selected = st.sidebar.selectbox("Team Name", team_list)
     shift_selected = st.sidebar.selectbox("Shift", ["All"] + sorted(df_raw['Shift'].unique().tolist()))
     emp_type_selected = st.sidebar.selectbox("Employee Type", ["All", "Artist", "QC"])
     product_selected_global = st.sidebar.selectbox("Product Filter", ["All", "Floorplan Queue", "Measurement Queue", "Autocad Queue", "Rework", "Urban Angles", "Van Bree Media"])
@@ -75,7 +76,11 @@ try:
     if product_selected_global != "All": mask &= (df_raw['Product'] == product_selected_global)
     df = df_raw[mask].copy()
 
-    # --- ৪. ম্যান-ডে ক্যালকুলেশন ফাংশন ---
+    # RT লিঙ্ক তৈরির হেল্পার
+    def make_rt_url(tid):
+        return f"https://tickets.bright-river.cc/Ticket/Display.html?id={tid}"
+
+    # --- ৪. ম্যান-ডে ক্যালকুলেশন ---
     def calculate_man_day_avg(target_df, p_name, j_type="Live Job"):
         subset = target_df[(target_df['Product'] == p_name) & (target_df['Job Type'] == j_type)]
         if subset.empty: return 0.0
@@ -102,25 +107,23 @@ try:
         tab1, tab2, tab3 = st.tabs(["Overview", "Team & Artist Summary", "Artist Analysis"])
 
         with tab1:
-            col_t1, col_t2 = st.columns([2, 1])
-            with col_t1:
-                st.subheader("Productivity Trend")
+            col_trend, col_lb = st.columns([2, 1])
+            with col_trend:
+                st.subheader("Daily Productivity Trend")
                 trend_df = df.groupby('date').size().reset_index(name='Orders')
                 fig_trend = px.line(trend_df, x='date', y='Orders', markers=True)
                 st.plotly_chart(fig_trend, use_container_width=True)
-            with col_t2:
+            with col_lb:
                 st.subheader("Leaderboard")
                 tops = df.groupby('Name').size().sort_values(ascending=False).head(5)
                 for name, count in tops.items(): st.info(f"**{name}** - {count} Orders")
 
         with tab2:
-            # TEAM SUMMARY
             st.subheader("Detailed Team Performance")
             team_sum = df.groupby(['Team', 'Shift']).agg(Present=('Name', 'nunique'), Orders=('Ticket ID', 'count'), Time=('Time', 'sum'), Rework=('Job Type', lambda x: (x == 'Rework').sum()), FP=('Product', lambda x: (x == 'Floorplan Queue').sum()), MRP=('Product', lambda x: (x == 'Measurement Queue').sum())).reset_index()
             st.dataframe(team_sum, use_container_width=True, hide_index=True)
             
             st.markdown("---")
-            # ARTIST SUMMARY (২০টি রো ভিজিবল করার জন্য height সেট করা হয়েছে)
             st.subheader("Performance Breakdown Section (Artist Summary)")
             artist_brk = df.groupby(['Name', 'Team', 'Shift']).agg(Order=('Ticket ID', 'count'), Time=('Time', 'sum'), Rework=('Job Type', lambda x: (x == 'Rework').sum()), FP=('Product', lambda x: (x == 'Floorplan Queue').sum()), MRP=('Product', lambda x: (x == 'Measurement Queue').sum()), UA=('Product', lambda x: (x == 'Urban Angles').sum()), CAD=('Product', lambda x: (x == 'Autocad Queue').sum()), VanBree=('Product', lambda x: (x == 'Van Bree Media').sum()), SQM=('SQM', 'sum'), days=('date', 'nunique')).reset_index()
             artist_brk['Idle'] = (artist_brk['days'] * 400) - artist_brk['Time']
@@ -131,11 +134,10 @@ try:
 
         with tab3:
             u_names = sorted(df['Name'].unique().tolist())
-            a_sel = st.selectbox("Select Artist for Details", u_names)
+            a_sel = st.selectbox("Select Artist for Analysis", u_names)
             a_df = df[df['Name'] == a_sel]
             
-            # আর্টিস্ট পার্সোনাল ইনসাইটস (৭টি কার্ড গ্লোবাল কার্ডের মতো)
-            st.subheader(f"Performance Insights: {a_sel}")
+            st.subheader(f"Insights: {a_sel}")
             p1, p2, p3, p4, p5, p6, p7 = st.columns(7)
             with p1: st.markdown(f'<div class="metric-card rework-border">Personal Rework<br><h2>{calculate_man_day_avg(a_df, "Floorplan Queue", "Rework")}</h2></div>', unsafe_allow_html=True)
             with p2: st.markdown(f'<div class="metric-card fp-border">Personal FP<br><h2>{calculate_man_day_avg(a_df, "Floorplan Queue", "Live Job")}</h2></div>', unsafe_allow_html=True)
@@ -145,42 +147,64 @@ try:
             with p6: st.markdown(f'<div class="metric-card vanbree-border">Personal Van Bree<br><h2>{calculate_man_day_avg(a_df, "Van Bree Media", "Live Job")}</h2></div>', unsafe_allow_html=True)
             with p7: st.markdown(f'<div class="metric-card total-border">Total Jobs<br><h2>{len(a_df)}</h2></div>', unsafe_allow_html=True)
 
-            col_a1, col_a2 = st.columns([1, 1.5])
+            col_a1, col_a2 = st.columns([1, 1])
             with col_a1:
                 st.subheader("Job Distribution")
                 p_data = a_df['Product'].value_counts().reset_index()
-                p_data.columns = ['Product', 'Unique Orders']
-                fig_bar = px.bar(p_data, x='Product', y='Unique Orders', text='Unique Orders', color='Product', color_discrete_sequence=px.colors.qualitative.Pastel)
-                fig_bar.update_traces(textposition='outside', cliponaxis=False) # টেক্সট ভিজিবল রাখার ফিক্স
+                p_data.columns = ['Product', 'Orders']
+                fig_bar = px.bar(p_data, x='Product', y='Orders', text='Orders', color='Product')
+                fig_bar.update_traces(textposition='outside', cliponaxis=False)
                 st.plotly_chart(fig_bar, use_container_width=True)
             with col_a2:
-                st.subheader("Activity Log (Click Ticket ID to View)")
-                log_df = a_df.copy()
-                log_df['date'] = log_df['date'].apply(lambda x: x.strftime('%m/%d/%Y'))
-                # RT লিঙ্ক তৈরি করা
-                log_df['Ticket URL'] = log_df['Ticket ID'].apply(lambda x: f"https://tickets.bright-river.cc/Ticket/Display.html?id={x}")
-                
-                # Ticket ID কে Clickable Link বানানো
-                st.dataframe(
-                    log_df[['date', 'Ticket ID', 'Ticket URL', 'Product', 'SQM', 'Floor', 'Labels', 'Time']],
-                    column_config={
-                        "Ticket URL": st.column_config.LinkColumn("View in RT", display_text="Click to Open")
-                    },
-                    use_container_width=True, hide_index=True
-                )
+                # --- Efficiency (Time vs SQM) ফিরিয়ে আনা হয়েছে ---
+                st.subheader("Efficiency (Time vs SQM)")
+                if not a_df.empty:
+                    fig_bubble = px.scatter(a_df, x="SQM", y="Time", size="Time", color="Product", 
+                                            hover_name="Ticket ID", log_x=False, size_max=40)
+                    st.plotly_chart(fig_bubble, use_container_width=True)
+
+            st.markdown("---")
+            st.subheader("Activity Log (Click Ticket ID to open RT)")
+            log_df = a_df.copy()
+            log_df['date'] = log_df['date'].apply(lambda x: x.strftime('%m/%d/%Y'))
+            log_df['Ticket Link'] = log_df['Ticket ID'].apply(make_rt_url)
+            
+            # ক্লিকেবল টিকেট আইডি ফিক্স
+            st.dataframe(
+                log_df[['date', 'Ticket ID', 'Ticket Link', 'Product', 'SQM', 'Floor', 'Labels', 'Time']],
+                column_config={
+                    "Ticket Link": st.column_config.LinkColumn("View in RT", display_text="Open Ticket"),
+                    "Ticket ID": st.column_config.TextColumn("Ticket ID")
+                },
+                use_container_width=True, hide_index=True
+            )
 
     elif page == "Tracking System":
         st.title("Performance Tracking")
-        criteria = st.selectbox("Criteria", ["All", "Short IP", "Spending More Time", "High Time vs SQM"])
+        criteria = st.selectbox("Select Criteria", ["All", "Short IP", "Spending More Time", "High Time vs SQM"])
         tdf = df.copy()
+        
+        # ট্র্যাকিং সিস্টেম এর জন্য লিঙ্ক জেনারেশন
+        tdf['Ticket Link'] = tdf['Ticket ID'].apply(make_rt_url)
+        
         s_ip = (((tdf['Employee Type'] == 'QC') & (tdf['Time'] < 2)) | ((tdf['Employee Type'] == 'Artist') & (((tdf['Product'] == 'Floorplan Queue') & (tdf['Time'] <= 15)) | ((tdf['Product'] == 'Measurement Queue') & (tdf['Time'] < 5)) | (~tdf['Product'].isin(['Floorplan Queue', 'Measurement Queue']) & (tdf['Time'] <= 10)))))
         s_mt = (((tdf['Employee Type'] == 'QC') & (tdf['Time'] > 20)) | ((tdf['Employee Type'] == 'Artist') & ((tdf['Time'] >= 150) | ((tdf['Product'] == 'Measurement Queue') & (tdf['Time'] > 40)))))
         h_ts = (tdf['Time'] > (tdf['SQM'] + 15)) & ~s_mt
+        
         if criteria == "Short IP": tdf = tdf[s_ip]
         elif criteria == "Spending More Time": tdf = tdf[s_mt]
         elif criteria == "High Time vs SQM": tdf = tdf[h_ts]
-        st.metric("Total Found", len(tdf))
-        st.dataframe(tdf, use_container_width=True, hide_index=True)
+        
+        st.metric("Total Jobs Found", len(tdf))
+        
+        # ট্র্যাকিং টেবিলেও ক্লিকেবল লিঙ্ক যুক্ত করা হয়েছে
+        st.dataframe(
+            tdf,
+            column_config={
+                "Ticket Link": st.column_config.LinkColumn("RT Link", display_text="Open")
+            },
+            use_container_width=True, hide_index=True
+        )
 
 except Exception as e:
     st.error(f"Error: {e}")
