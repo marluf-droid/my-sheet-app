@@ -822,7 +822,7 @@ try:
                     
                     if st.form_submit_button("Submit Analysis"):
                         row_smt = smt_df[smt_df['Ticket ID'] == t_id_smt].iloc[0]
-                        data_smt = [str(t_id_smt), row_smt['Name'], str(row_smt['date']), row_smt['Team'], str(row_smt['Time']), str(extra_t), f"{obs}: {tl_note}"]
+                        data_smt = [str(t_id_smt), row_smt['Name'], str(row_smt['date']), row_smt['Team'], str(row_smt['Time']), str(extra_t), f"{obs} {tl_note}"]
                         if write_to_shortfall_sheet(TARGET_SHEET_ID, "Spending More Time", data_smt):
                             st.success(f"Analysis for Ticket #{t_id_smt} saved!")
 
@@ -850,7 +850,7 @@ try:
                     
                     if st.form_submit_button("Submit to SMT Sheet"):
                         row_hts = hts_df[hts_df['Ticket ID'] == t_id_hts].iloc[0]
-                        data_hts = [str(t_id_hts), row_hts['Name'], str(row_hts['date']), row_hts['Team'], str(row_hts['Time']), str(e_time), f"{reason}: {note}"]
+                        data_hts = [str(t_id_hts), row_hts['Name'], str(row_hts['date']), row_hts['Team'], str(row_hts['Time']), str(e_time), f"{reason} {note}"]
                         if write_to_shortfall_sheet(TARGET_SHEET_ID, "Spending More Time", data_hts): 
                             st.success(f"Ticket #{t_id_hts} Analysis Saved!")
 
