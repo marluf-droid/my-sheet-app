@@ -362,61 +362,59 @@ try:
                 fig_shift.update_layout(margin=dict(t=10, b=10, l=10, r=10), height=350, showlegend=True)
                 st.plotly_chart(fig_shift, width="stretch")
         with tab2:
-        # ১. টিম সামারি টেবিল (সব কলাম সহ)
+            # --- ১. টিম সামারি টেবিল (এটি এখন শুধুমাত্র Tab 2 তে থাকবে) ---
             st.markdown("""
-            <div style="background:#f8fafc; padding:10px; border-radius:8px; border-left:5px solid #64748b; margin-bottom:15px;">
-                <h5 style="margin:0; font-weight:bold; color: #0f172a;"> Detailed Team Performance</h5>
-            </div>
-        """, unsafe_allow_html=True)
-        
-        team_sum = df.groupby(['Team', 'Shift']).agg(
-            Present=('Name', 'nunique'), 
-            Orders=('Ticket ID', 'count'), 
-            Time=('Time', 'sum'),
-            Rework=('Job Type', lambda x: (x == 'Rework').sum()),
-            FP=('Product', lambda x: (x == 'Floorplan Queue').sum()),
-            MRP=('Product', lambda x: (x == 'Measurement Queue').sum()),
-            CAD=('Product', lambda x: (x == 'Autocad Queue').sum()),
-            UA=('Product', lambda x: (x == 'Urban Angles').sum()),
-            VanBree=('Product', lambda x: (x == 'Van Bree Media').sum()),
-            SQM=('SQM', 'sum')
-        ).reset_index()
-        
-        st.dataframe(team_sum.sort_values(by='Orders', ascending=False), width="stretch", hide_index=True)
-        
-        st.markdown("<br>", unsafe_allow_html=True)
-        
-        # ২. আর্টিস্ট সামারি টেবিল (সব কলাম এবং ২০টি রো এর পর স্ক্রলবার সহ)
-        st.markdown("""
-            <div style="background:#f8fafc; padding:10px; border-radius:8px; border-left:5px solid #8b5cf6; margin-bottom:15px;">
-                <h5 style="margin:0; font-weight:bold; color: #0f172a;"> Performance Breakdown Section (Artist Summary)</h5>
-            </div>
-        """, unsafe_allow_html=True)
-        
-        artist_brk = df.groupby(['Name', 'Team', 'Shift']).agg(
-            Order=('Ticket ID', 'count'), 
-            Time=('Time', 'sum'), 
-            Rework=('Job Type', lambda x: (x == 'Rework').sum()),
-            FP=('Product', lambda x: (x == 'Floorplan Queue').sum()),
-            MRP=('Product', lambda x: (x == 'Measurement Queue').sum()),
-            UA=('Product', lambda x: (x == 'Urban Angles').sum()),
-            CAD=('Product', lambda x: (x == 'Autocad Queue').sum()),
-            VanBree=('Product', lambda x: (x == 'Van Bree Media').sum()),
-            SQM=('SQM', 'sum'),
-            days=('date', 'nunique')
-        ).reset_index()
-        
-        # Idle Time ক্যালকুলেশন
-        artist_brk['Idle'] = (artist_brk['days'] * 400) - artist_brk['Time']
-        artist_brk['Idle'] = artist_brk['Idle'].apply(lambda x: max(0, x))
-        
-        # ২০টি রো এর জন্য হাইট ৭৫০ এবং টেক্সট ডার্ক করার কনফিগারেশন
-        st.dataframe(
-            artist_brk.sort_values(by='Order', ascending=False), 
-            width="stretch", 
-            hide_index=True, 
-            height=750 # এখানে ২০টি রো এর পর স্ক্রলবার আসবে
-        )
+                <div style="background:#f8fafc; padding:10px; border-radius:8px; border-left:5px solid #64748b; margin-bottom:15px;">
+                    <h5 style="margin:0; font-weight:bold; color: #0f172a;"> Detailed Team Performance</h5>
+                </div>
+            """, unsafe_allow_html=True)
+            
+            team_sum = df.groupby(['Team', 'Shift']).agg(
+                Present=('Name', 'nunique'), 
+                Orders=('Ticket ID', 'count'), 
+                Time=('Time', 'sum'),
+                Rework=('Job Type', lambda x: (x == 'Rework').sum()),
+                FP=('Product', lambda x: (x == 'Floorplan Queue').sum()),
+                MRP=('Product', lambda x: (x == 'Measurement Queue').sum()),
+                CAD=('Product', lambda x: (x == 'Autocad Queue').sum()),
+                UA=('Product', lambda x: (x == 'Urban Angles').sum()),
+                VanBree=('Product', lambda x: (x == 'Van Bree Media').sum()),
+                SQM=('SQM', 'sum')
+            ).reset_index()
+            
+            st.dataframe(team_sum.sort_values(by='Orders', ascending=False), width="stretch", hide_index=True)
+            
+            st.markdown("<br>", unsafe_allow_html=True)
+            
+            # --- ২. আর্টিস্ট সামারি টেবিল (এটিও এখন শুধুমাত্র Tab 2 তে থাকবে) ---
+            st.markdown("""
+                <div style="background:#f8fafc; padding:10px; border-radius:8px; border-left:5px solid #8b5cf6; margin-bottom:15px;">
+                    <h5 style="margin:0; font-weight:bold; color: #0f172a;"> Performance Breakdown Section (Artist Summary)</h5>
+                </div>
+            """, unsafe_allow_html=True)
+            
+            artist_brk = df.groupby(['Name', 'Team', 'Shift']).agg(
+                Order=('Ticket ID', 'count'), 
+                Time=('Time', 'sum'), 
+                Rework=('Job Type', lambda x: (x == 'Rework').sum()),
+                FP=('Product', lambda x: (x == 'Floorplan Queue').sum()),
+                MRP=('Product', lambda x: (x == 'Measurement Queue').sum()),
+                UA=('Product', lambda x: (x == 'Urban Angles').sum()),
+                CAD=('Product', lambda x: (x == 'Autocad Queue').sum()),
+                VanBree=('Product', lambda x: (x == 'Van Bree Media').sum()),
+                SQM=('SQM', 'sum'),
+                days=('date', 'nunique')
+            ).reset_index()
+            
+            artist_brk['Idle'] = (artist_brk['days'] * 400) - artist_brk['Time']
+            artist_brk['Idle'] = artist_brk['Idle'].apply(lambda x: max(0, x))
+            
+            st.dataframe(
+                artist_brk.sort_values(by='Order', ascending=False), 
+                width="stretch", 
+                hide_index=True, 
+                height=750 
+            )
 
         with tab3:
             u_names = sorted(df['Name'].unique().tolist())
@@ -853,7 +851,7 @@ try:
                     if st.form_submit_button("Submit to SMT Sheet"):
                         row_hts = hts_df[hts_df['Ticket ID'] == t_id_hts].iloc[0]
                         data_hts = [str(t_id_hts), row_hts['Name'], str(row_hts['date']), row_hts['Team'], str(row_hts['Time']), str(e_time), f"{reason}: {note}"]
-                        if write_to_shortfall_sheet(TARGET_SHEET_ID, "SMT", data_hts): 
+                        if write_to_shortfall_sheet(TARGET_SHEET_ID, "Spending More Time", data_hts): 
                             st.success(f"Ticket #{t_id_hts} Analysis Saved!")
 
 except Exception as e:
