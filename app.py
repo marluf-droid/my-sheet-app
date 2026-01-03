@@ -789,7 +789,8 @@ try:
                     if st.form_submit_button("Submit to Short Inprogress"):
                         row = sip_df[sip_df['Ticket ID'] == t_id].iloc[0]
                         # Status (index 3) খালি রাখা হয়েছে ("")
-                        data = [str(t_id), row['Name'], str(row['date']), "", row['Team'], comment]
+                        formatted_date = row['date'].strftime('%d-%b-%Y').lstrip('0')
+                        data = [str(t_id), row['Name'], formatted_date, "", row['Team'], comment]
                         if write_to_shortfall_sheet(TARGET_SHEET_ID, "Short Inprogress", data):
                             st.success(f"Ticket #{t_id} reported successfully!")
                             st.session_state.selected_ticket = None
@@ -822,7 +823,8 @@ try:
                     
                     if st.form_submit_button("Submit Analysis"):
                         row_smt = smt_df[smt_df['Ticket ID'] == t_id_smt].iloc[0]
-                        data_smt = [str(t_id_smt), row_smt['Name'], str(row_smt['date']), row_smt['Team'], str(row_smt['Time']), str(extra_t), f"{obs} {tl_note}"]
+                        formatted_date_smt = row_smt['date'].strftime('%d-%b-%Y').lstrip('0')
+                        data_smt = [str(t_id_smt), row_smt['Name'], formatted_date_smt, row_smt['Team'], str(row_smt['Time']), str(extra_t), f"{obs} {tl_note}".strip()]
                         if write_to_shortfall_sheet(TARGET_SHEET_ID, "Spending More Time", data_smt):
                             st.success(f"Analysis for Ticket #{t_id_smt} saved!")
 
@@ -850,7 +852,8 @@ try:
                     
                     if st.form_submit_button("Submit to SMT Sheet"):
                         row_hts = hts_df[hts_df['Ticket ID'] == t_id_hts].iloc[0]
-                        data_hts = [str(t_id_hts), row_hts['Name'], str(row_hts['date']), row_hts['Team'], str(row_hts['Time']), str(e_time), f"{reason} {note}"]
+                        formatted_date_hts = row_hts['date'].strftime('%d-%b-%Y').lstrip('0')
+                        data_hts = [str(t_id_hts), row_hts['Name'], formatted_date_hts, row_hts['Team'], str(row_hts['Time']), str(e_time), f"{reason} {note}".strip()]
                         if write_to_shortfall_sheet(TARGET_SHEET_ID, "Spending More Time", data_hts): 
                             st.success(f"Ticket #{t_id_hts} Analysis Saved!")
 
