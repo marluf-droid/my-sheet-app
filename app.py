@@ -88,6 +88,64 @@ st.markdown("""
     .cl-ua { background-color: #f3e8ff; border-left-color: #8b5cf6; }
     .cl-vb { background-color: #ccfbf1; border-left-color: #06b6d4; }
     .cl-total { background-color: #f1f5f9; border-left-color: #64748b; }
+            /* নতুন ড্যাশবোর্ড হেডার */
+    .dashboard-header-modern {
+        background: linear-gradient(90deg, #0f172a 0%, #1e293b 100%);
+        color: white; padding: 25px; border-radius: 15px; 
+        margin-bottom: 25px; text-align: center;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    }
+    /* উন্নত মেট্রিক কার্ড */
+    .sleek-card-modern {
+        background: white; padding: 18px; border-radius: 12px;
+        text-align: center; border-top: 5px solid #ccc;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+        transition: transform 0.3s ease;
+    }
+    .sleek-card-modern:hover { transform: translateY(-5px); }
+    .sleek-card-modern h2 { margin: 8px 0 0 0; font-size: 26px; color: #1e293b; }
+    .sleek-card-modern small { color: #64748b; font-weight: 700; text-transform: uppercase; font-size: 11px; }
+            /* --- আধুনিক গ্লাস-বক্স ট্যাব ডিজাইন --- */
+    /* ১. ট্যাব লিস্টের কন্টেইনার (Glass Background) */
+    [data-baseweb="tab-list"] {
+        background: rgba(241, 245, 249, 0.5) !important;
+        backdrop-filter: blur(8px);
+        border-radius: 12px !important;
+        padding: 6px !important;
+        gap: 10px !important;
+        border: 1px solid rgba(226, 232, 240, 0.8);
+        margin-bottom: 20px;
+    }
+
+    /* ২. প্রতিটি ট্যাব (Normal State) */
+    .stTabs [data-baseweb="tab"] {
+        background-color: transparent !important;
+        border-radius: 10px !important;
+        padding: 8px 20px !important;
+        font-weight: 600 !important;
+        color: #64748b !important;
+        transition: all 0.3s ease !important;
+        border: none !important;
+    }
+
+    /* ৩. একটিভ ট্যাব হাইলাইট (Glass Box Curve Effect) */
+    .stTabs [aria-selected="true"] {
+        background-color: white !important;
+        color: #3b82f6 !important;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08) !important;
+        transform: scale(1.02);
+    }
+
+    /* ৪. মাউস নিলে হালকা গ্লো হবে */
+    .stTabs [data-baseweb="tab"]:hover {
+        color: #3b82f6 !important;
+        background: rgba(255, 255, 255, 0.5) !important;
+    }
+
+    /* ৫. ডিফল্ট নিচের লাল লাইনটি বন্ধ করা */
+    .stTabs [data-baseweb="tab-highlight"] {
+        background-color: transparent !important;
+    }
     </style>
     """, unsafe_allow_html=True)
 
@@ -102,18 +160,43 @@ def get_gspread_client():
 
 # জেনারেল ডাটা (Dashboard & Tracking এর জন্য)
 @st.cache_data(ttl=600)
-def get_data():
+def get_data(sheet_id):
     client = get_gspread_client()
-    sheet_id = "1e-3jYxjPkXuxkAuSJaIJ6jXU0RT1LemY6bBQbCTX_6Y" # আপনার অরিজিনাল ডাটা শিট
     spreadsheet = client.open_by_key(sheet_id)
     df = pd.DataFrame(spreadsheet.worksheet("DATA").get_all_records())
+    
+    # ১. কলামের নামগুলো থেকে অতিরিক্ত স্পেস মুছে ফেলা
     df.columns = [c.strip() for c in df.columns]
-    df['date'] = pd.to_datetime(df['date'], errors='coerce').dt.date
+    
+    # ২. জানুয়ারী শিটে "Team name" বা অন্য কোনো ভার্সন থাকলে সেটাকে "Team" এ রূপান্তর করা
+    # এটি খুবই জরুরি কারণ আপনার কোড সব জায়গায় 'Team' খুঁজছে
+    rename_dict = {
+        'Team name': 'Team',
+        'Team Name': 'Team',
+        'TEAM NAME': 'Team',
+        'TEAM': 'Team'
+    }
+    df = df.rename(columns=rename_dict)
+
+    # যদি কোনো কারণে 'Team' কলাম না পাওয়া যায়, তবে একটি খালি কলাম তৈরি করবে যাতে এরর না আসে
+    if 'Team' not in df.columns:
+        df['Team'] = 'Unknown'
+
+    # ৩. তারিখ কনভার্ট করা এবং খালি রো মুছে ফেলা (আগের এররটির সমাধান)
+    df['date'] = pd.to_datetime(df['date'], errors='coerce')
+    df = df.dropna(subset=['date']) 
+    df['date'] = df['date'].dt.date
+    
+    # ৪. কলাম ভ্যালু নিউমেরিক করা
     df['Time'] = pd.to_numeric(df['Time'], errors='coerce').fillna(0)
     df['SQM'] = pd.to_numeric(df['SQM'], errors='coerce').fillna(0)
+    
+    # ৫. ডাটা ক্লিন করা
     text_cols = ['Product', 'Job Type', 'Employee Type', 'Team', 'Name', 'Shift']
     for col in text_cols:
-        if col in df.columns: df[col] = df[col].astype(str).str.strip()
+        if col in df.columns: 
+            df[col] = df[col].astype(str).str.strip()
+            
     return df
 
 # Monthly Summary ডাটা (আপনার নতুন Monthly Efficiency শিট থেকে)
@@ -148,7 +231,32 @@ try:
 
     # ডাটা লোডিং (Dashboard এবং Tracking এর জন্য)
     if page == "Dashboard" or page == "Tracking System":
-        df_raw = get_data()
+        # ১. ডাটা সোর্স অপশন
+        st.sidebar.markdown("##  Data Selection")
+        
+        # ড্রপডাউনে একটি 'Manual Input' অপশন যোগ করা হয়েছে
+        options = ["January 2026", "December 2025", "Connect New Sheet (Manual)"]
+        selected_option = st.sidebar.selectbox("Select Data Month", options)
+
+        # ২. লজিক: যদি ম্যানুয়াল সিলেক্ট করা হয় তবে ইনপুট বক্স দেখাবে
+        if selected_option == "Connect New Sheet (Manual)":
+            active_sheet_id = st.sidebar.text_input("Paste Sheet ID here", placeholder="e.g. 1lQJQkXNvsdnN8pwsI4...")
+            selected_month = "Custom Data" # হেডারের জন্য নাম
+            
+            if not active_sheet_id:
+                st.sidebar.info(" Please paste the Google Sheet ID above.")
+                st.stop() # আইডি না দেওয়া পর্যন্ত নিচের কোড চলবে না
+        else:
+            # আগের সেভ করা আইডিগুলো
+            data_sources = {
+                "January 2026": "1lQJQkXNvsdnN8pwsI4QhctS7Pk0M0D6FVklLvYKPNmc",
+                "December 2025": "1e-3jYxjPkXuxkAuSJaIJ6jXU0RT1LemY6bBQbCTX_6Y"
+            }
+            active_sheet_id = data_sources[selected_option]
+            selected_month = selected_option
+
+        # ডাটা লোড করা
+        df_raw = get_data(active_sheet_id)
         
         st.sidebar.markdown("## Global Filters")
         start_date = st.sidebar.date_input("Start Date", df_raw['date'].min())
@@ -197,7 +305,7 @@ try:
                 trend_df = df.groupby('date').size().reset_index(name='Orders')
                 st.plotly_chart(px.line(trend_df, x='date', y='Orders', markers=True), use_container_width=True)
             with c2:
-                st.subheader("🏆 Leaderboard")
+                st.subheader(" Leaderboard")
                 tops = df.groupby('Name').size().sort_values(ascending=False).head(5)
                 for n, c in tops.items(): st.info(f"**{n}** - {c} Orders")
 
