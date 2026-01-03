@@ -119,7 +119,7 @@ def get_gspread_client():
     return gspread.authorize(creds)
 
 # ডাটা লোডিং ফাংশন (তারিখের এরর এবং কলামের নামের অমিল ফিক্স করা হয়েছে)
-@st.cache_data(ttl=600)
+@st.cache_data(ttl=86400)
 def get_data(sheet_id):
     client = get_gspread_client()
     spreadsheet = client.open_by_key(sheet_id)
@@ -160,7 +160,7 @@ def write_to_shortfall_sheet(sheet_id, worksheet_name, data_list):
         return False
 
 # Monthly Summary ডাটা (আপনার নতুন Monthly Efficiency শিট থেকে)
-@st.cache_data(ttl=600)
+@st.cache_data(ttl=86400)
 def get_summary_data():
     client = get_gspread_client()
     sheet_id = "1hFboFpRmst54yVUfESFAZE_UgNdBsaBAmHYA-9z5eJE" 
@@ -859,3 +859,4 @@ try:
 
 except Exception as e:
     st.error(f"Error: {e}")
+
