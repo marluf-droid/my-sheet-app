@@ -15,10 +15,58 @@ st.markdown("""
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
     html, body, [class*="css"] { font-family: 'Inter', sans-serif; }
     
+    /* ১. মূল কার্ডের স্টাইল এবং অ্যানিমেশন সেট করা */
     .metric-card { 
-        padding: 20px; border-radius: 12px; text-align: center; color: #1e293b; 
-        background: #ffffff; border-top: 5px solid #e2e8f0;
-        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); 
+        padding: 15px; 
+        border-radius: 12px; 
+        text-align: center; 
+        color: #1e293b; 
+        background: #ffffff; 
+        border-top: 5px solid #e2e8f0;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+        transition: all 0.3s ease-in-out; /* এটি অ্যানিমেশনকে স্মুথ করবে */
+        cursor: pointer;
+    }
+
+    /* ২. মাউস নিলে যে ইফেক্ট হবে (Highlight Effect) */
+    .metric-card:hover {
+        transform: translateY(-8px); /* কার্ডটি ৮ পিক্সেল ওপরে উঠে আসবে */
+        box-shadow: 0 12px 20px rgba(0, 0, 0, 0.15); /* ছায়া আরও গভীর হবে */
+        border-bottom: 2px solid rgba(0, 0, 0, 0.05); /* নিচে হালকা বর্ডার যোগ হবে */
+    }
+            /* ১. Performance Insights এবং Monthly Summary কার্ডের জন্য ট্রানজিশন সেট করা */
+    .metric-box, .metric-card-box {
+        transition: all 0.3s ease-in-out;
+        cursor: pointer;
+    }
+
+    /* ২. মাউস নিলে এই কার্ডগুলোও ওপরের দিকে ভেসে উঠবে এবং শ্যাডো বাড়বে */
+    .metric-box:hover, .metric-card-box:hover {
+        transform: translateY(-5px); /* ৫ পিক্সেল ওপরে উঠবে */
+        box-shadow: 0 10px 15px rgba(0, 0, 0, 0.1); /* শ্যাডো বা ছায়া গভীর হবে */
+        filter: brightness(1.03); /* সামান্য উজ্জ্বল হবে */
+    }
+            /* ১. পেজ লোড হওয়ার সময় নিচ থেকে উপরে ভেসে ওঠার অ্যানিমেশন তৈরি */
+    @keyframes fadeInUp {
+        from {
+            opacity: 0;
+            transform: translateY(40px); /* ৪০ পিক্সেল নিচ থেকে শুরু হবে */
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0); /* আগের জায়গায় ফিরে আসবে */
+        }
+    }
+
+    /* ২. স্ট্রীমলিটের মেইন কন্টেন্ট ব্লককে টার্গেট করে অ্যানিমেশন অ্যাপ্লাই করা */
+    .main .block-container {
+        animation: fadeInUp 0.8s ease-out;
+    }
+
+    /* ৩. কার্ডগুলোর জন্য একটু দেরি করে অ্যানিমেশন হওয়া (Optional: পপ-আপ ইফেক্ট) */
+    .metric-card, .metric-box, .metric-card-box {
+        animation: fadeInUp 1s ease-out;
+    }
     }
     .rework-border { border-top-color: #ef4444; background-color: #fff1f0; }
     .fp-border { border-top-color: #3b82f6; background-color: #e6f7ff; }
@@ -141,7 +189,7 @@ try:
         with m7: st.markdown(f'<div class="metric-card total-border">Total Order<br><h2>{len(df)}</h2></div>', unsafe_allow_html=True)
 
         st.markdown("<br>", unsafe_allow_html=True)
-        tab1, tab2, tab3 = st.tabs(["📉 Overview", "👥 Team & Artist Summary", "🎨 Artist Analysis"])
+        tab1, tab2, tab3 = st.tabs(["📉 Overview", " Team & Artist Summary", " Artist Analysis"])
 
         with tab1:
             c1, c2 = st.columns([2, 1])
@@ -169,7 +217,7 @@ try:
             a_sel = st.selectbox("Select Artist", u_names, key="dash_artist_tab3_v2")
             a_df = df[df['Name'] == a_sel]
             
-            st.markdown(f"#### 🎨 Performance Insights: {a_sel}")
+            st.markdown(f"####  Performance Insights: {a_sel}")
             
             # রঙিন মেট্রিক কার্ড রো
             i1, i2, i3, i4, i5, i6, i7 = st.columns(7)
@@ -193,92 +241,236 @@ try:
             # অ্যাক্টিভিটি লগ চার্ট (পুরানো ডাটা ফেরত আনা হয়েছে)
             cll, crr = st.columns(2)
             with cll:
-                p_data = a_df['Product'].value_counts().reset_index()
-                p_data.columns = ['Product', 'Orders']
-                st.plotly_chart(px.bar(p_data, x='Product', y='Orders', text='Orders', color='Product', height=350, title="Job Distribution"), use_container_width=True)
+                st.subheader("Job Distribution (All Specs)")
+                
+                # ১. প্রতিটি সেকশনের জন্য আলাদাভাবে কাউন্ট ক্যালকুলেট করা (মেট্রিক কার্ডের সাথে মিল রেখে)
+                dist_data = {
+                    "Category": ["Rework", "FP", "MRP", "CAD", "UA", "VB"],
+                    "Count": [
+                        len(a_df[a_df['Job Type'] == 'Rework']),
+                        len(a_df[(a_df['Product'] == 'Floorplan Queue') & (a_df['Job Type'] == 'Live Job')]),
+                        len(a_df[(a_df['Product'] == 'Measurement Queue') & (a_df['Job Type'] == 'Live Job')]),
+                        len(a_df[(a_df['Product'] == 'Autocad Queue') & (a_df['Job Type'] == 'Live Job')]),
+                        len(a_df[(a_df['Product'] == 'Urban Angles') & (a_df['Job Type'] == 'Live Job')]),
+                        len(a_df[(a_df['Product'] == 'Van Bree Media') & (a_df['Job Type'] == 'Live Job')])
+                    ]
+                }
+                
+                # ২. ডাটাফ্রেম তৈরি করা
+                chart_df = pd.DataFrame(dist_data)
+                
+                # ৩. বার চার্ট তৈরি করা (স্মুথ কালার প্যালেট সহ)
+                fig_dist = px.bar(
+                    chart_df, 
+                    x='Category', 
+                    y='Count', 
+                    text='Count', 
+                    color='Category',
+                    color_discrete_sequence=px.colors.qualitative.Pastel, # সুন্দর স্মুথ কালার
+                    height=400
+                )
+                
+                # ৪. চার্টের লেআউট এবং ভ্যালু ভিজিবিলিটি ঠিক করা
+                fig_dist.update_traces(textposition='outside', cliponaxis=False)
+                fig_dist.update_layout(
+                    showlegend=False, 
+                    xaxis_title=None, 
+                    yaxis_title="Total Orders",
+                    yaxis_range=[0, chart_df['Count'].max() * 1.2], # ওপরের ভ্যালু যাতে কেটে না যায়
+                    margin=dict(t=20, b=20, l=10, r=10)
+                )
+                
+                st.plotly_chart(fig_dist, use_container_width=True)
             with crr:
-                st.plotly_chart(px.scatter(a_df, x="SQM", y="Time", size="Time", color="Product", height=350, title="SQM vs Time Efficiency"), use_container_width=True)
+                st.subheader("SQM vs Time Efficiency")
+                
+                # ১. ডাটা প্রিপারেশন এবং লিঙ্ক তৈরি
+                a_plot_df = a_df.copy()
+                a_plot_df['RT_Link'] = a_plot_df['Ticket ID'].apply(lambda x: f"https://tickets.bright-river.cc/Ticket/Display.html?id={x}")
+
+                # ২. স্কেটার প্লট তৈরি
+                fig_s = px.scatter(
+                    a_plot_df, 
+                    x="SQM", 
+                    y="Time", 
+                    size="Time", 
+                    color="Product", 
+                    hover_data={'Ticket ID': True, 'SQM': True, 'Time': True},
+                    custom_data=['Ticket ID', 'RT_Link'], # এখানে ডাটা ইনজেক্ট করা হয়েছে
+                    height=400
+                )
+                
+                # ডট সিলেক্ট করলে সেটি লাল দেখাবে যাতে বোঝা যায় কোনটি ক্লিক হয়েছে
+                fig_s.update_traces(selected=dict(marker=dict(color='red', size=15)))
+
+                # ৩. চার্ট ডিসপ্লে (on_select="rerun" ব্যবহার করে)
+                selection = st.plotly_chart(fig_s, use_container_width=True, on_select="rerun", key="sqm_efficiency_chart")
+
+                # ৪. বাটন দেখানোর নিরাপদ লজিক (Error handling সহ)
+                if selection and "selection" in selection:
+                    points = selection["selection"].get("points", [])
+                    if points:
+                        try:
+                            # প্রথম পয়েন্টটি নেওয়া
+                            target_point = points[0]
+                            
+                            # 'custom_data' বা 'customdata' যেকোনো একটির জন্য চেক করা (এটিই এরর ফিক্স করবে)
+                            c_data = target_point.get("custom_data") or target_point.get("customdata")
+                            
+                            if c_data:
+                                t_id = c_data[0]
+                                t_url = c_data[1]
+                                
+                                # চার্টের ঠিক নিচে সুন্দর করে বাটন দেখানো
+                                st.success(f"Selected Ticket: #{t_id}")
+                                st.link_button(f" Open Ticket #{t_id} in RT", t_url, use_container_width=True, type="primary")
+                            else:
+                                st.error("Link data missing in the selected point.")
+                        except Exception as e:
+                            st.error(f"Selection processing error: {e}")
+                    else:
+                        # কিছুই সিলেক্ট না থাকলে এই গাইডটি দেখাবে
+                        st.info("**Instruction:** Click exactly on a dot in the chart above to see the RT Link button here.")
+            st.markdown("---")
+            st.subheader(f"📋 Artist Performance Detail ")
+            
+            # আর্টিস্টের ডাটা কপি করা
+            log_df = a_df.copy()
+
+            # শিটে কলামগুলো সাধারণত যে ক্রমে থাকে (আপনার DATA ট্যাবের ক্রম অনুযায়ী)
+            # আপনি চাইলে এখানে আপনার শিটের কলামের ক্রম অনুযায়ী নামগুলো আগে-পিছে করতে পারেন
+            sheet_cols = ['date', 'Ticket ID', 'Product', 'SQM', 'Floor', 'Labels', 'Time', 'Job Type', 'Shift']
+            
+            # শিটে থাকা শুধুমাত্র বিদ্যমান কলামগুলো ফিল্টার করা
+            display_cols = [c for c in sheet_cols if c in log_df.columns]
+
+            # আরটি লিঙ্ক (RT Link) টি যোগ রাখা হলো কারণ এটি কাজের সুবিধার জন্য প্রয়োজন
+            if 'Ticket ID' in log_df.columns:
+                log_df['RT Link'] = log_df['Ticket ID'].apply(lambda x: f"https://tickets.bright-river.cc/Ticket/Display.html?id={x}")
+                if 'Ticket ID' in display_cols:
+                    idx = display_cols.index('Ticket ID') + 1
+                    display_cols.insert(idx, 'RT Link')
+
+            # ডাটাফ্রেমটি ডিসপ্লে করা
+            st.dataframe(
+                log_df[display_cols].sort_values('date', ascending=False),
+                column_config={"RT Link": st.column_config.LinkColumn("RT", display_text="Open")},
+                use_container_width=True, 
+                hide_index=True
+            )
     # --- ৫. Monthly Summary (সম্পূর্ণ নতুন শিট থেকে) ---
     elif page == "Monthly Summary":
         df_summary = get_summary_data()
-        # কলামের নামগুলো ক্লিন করা (যাতে শিটের সাথে হুবহু মেলে)
         df_summary.columns = [" ".join(c.split()).upper() for c in df_summary.columns]
-        
-        st.markdown("<h2 style='text-align: center; color: #1e293b; font-weight: 800;'>📊 Artist & QC Performance Intelligence</h2>", unsafe_allow_html=True)
-        
-        # ১. টপ সেকশন: লিডারবোর্ড (পয়েন্ট ১ অনুযায়ী ফিক্স করা হয়েছে)
-        st.markdown("---")
-        lb_col1, lb_col2 = st.columns([1.5, 1])
-        
-        with lb_col1:
-            st.subheader("🏆 Leaderboard Analysis")
-            l_type = st.radio("View Top 10 for:", ["ARTIST", "QC"], horizontal=True)
-            
-            # শিটের 'ARTIST/ QC' কলাম ব্যবহার করে ফিল্টার (পয়েন্ট ১ এর সমাধান)
-            # স্ক্রিনশট অনুযায়ী কলাম বি এর নাম 'ARTIST/ QC'
-            col_target = 'ARTIST/ QC' if 'ARTIST/ QC' in df_summary.columns else 'ARTIST/QC'
-            
-            top_filtered = df_summary[df_summary[col_target].str.strip().str.upper() == l_type.upper()]
-            top_data = top_filtered.groupby('USER NAME ALL')['LIVE ORDER'].sum().sort_values(ascending=False).head(10).reset_index()
-            
-            if not top_data.empty:
-                fig_top = px.bar(top_data, x='LIVE ORDER', y='USER NAME ALL', orientation='h', 
-                                 text='LIVE ORDER', color='LIVE ORDER', color_continuous_scale='Blues')
-                fig_top.update_layout(height=380, showlegend=False, yaxis={'categoryorder':'total ascending'})
-                fig_top.update_traces(textposition='outside', cliponaxis=False)
-                st.plotly_chart(fig_top, use_container_width=True)
-            else:
-                st.info(f"No data found for {l_type} in the '{col_target}' column.")
-            
-        with lb_col2:
-            st.subheader("👥 Workload by Team")
-            def identify_team(team_str):
-                team_str = str(team_str).upper()
-                if "RED" in team_str: return "Red Team"
-                if "GREEN" in team_str: return "Green Team"
-                if "BLUE" in team_str: return "Blue Team"
-                if "FEMALE" in team_str: return "Female Team"
-                return "Others"
+        col_role = 'ARTIST/ QC' if 'ARTIST/ QC' in df_summary.columns else 'ARTIST/QC'
 
-            df_summary['TEAM_GROUP'] = df_summary['TEAM'].apply(identify_team)
-            team_work = df_summary.groupby('TEAM_GROUP')['LIVE ORDER'].sum().reset_index()
-            fig_team = px.bar(team_work, x='TEAM_GROUP', y='LIVE ORDER', text='LIVE ORDER', 
-                              color='TEAM_GROUP', color_discrete_map={
-                                  "Red Team": "#ef4444", "Green Team": "#10b981", 
-                                  "Blue Team": "#3b82f6", "Female Team": "#ec4899", "Others": "#94a3b8"
-                              })
-            fig_team.update_layout(height=380, showlegend=False)
-            st.plotly_chart(fig_team, use_container_width=True)
-
-        # ২. আর্টিস্ট সিলেকশন
-        st.markdown("---")
-        f1, f2 = st.columns(2)
-        with f1: a_sel = st.selectbox("👤 Select Artist/QC Name", sorted(df_summary['USER NAME ALL'].unique().tolist()), key="sum_a_v14")
-        with f2: 
-            m_list = sorted(df_summary['MONTH'].unique().tolist(), reverse=True)
-            m_sel = st.multiselect("📅 Select Month (Pick 1 for Ranking)", m_list, key="sum_m_v14")
+        # --- আধুনিক স্লিক CSS ---
+        st.markdown("""
+            <style>
+            .compact-header {
+                background: linear-gradient(90deg, #1e293b 0%, #334155 100%);
+                color: white; padding: 12px 25px; border-radius: 15px; margin-bottom: 20px;
+                display: flex; justify-content: space-between; align-items: center;
+            }
+            /* মেইন ৪টি কার্ডের জন্য স্পেশাল ডিজাইন */
+            .main-metric-card {
+                background: #ffffff; border-radius: 15px; padding: 20px;
+                border: 1px solid #e2e8f0; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+                text-align: center; height: 170px; display: flex; flex-direction: column;
+                justify-content: center; align-items: center; transition: 0.3s;
+            }
+            .main-metric-card:hover { transform: translateY(-5px); box-shadow: 0 10px 15px rgba(0,0,0,0.05); }
             
+            .score-circle-v2 {
+                background: #f8fafc; border-radius: 50%; width: 75px; height: 75px;
+                display: flex; align-items: center; justify-content: center;
+                border: 4px solid #3b82f6; margin-bottom: 5px; color: #1e293b;
+            }
+            .info-card-sleek {
+                padding: 10px; border-radius: 12px; text-align: center;
+                border: 1px solid rgba(0,0,0,0.05);
+            }
+            </style>
+        """, unsafe_allow_html=True)
+
+        # ১. হেডার
+        st.markdown('<div class="compact-header"><h2 style="margin:0;"> Intelligence Hub</h2><p style="margin:0; opacity:0.8;">Performance Dashboard</p></div>', unsafe_allow_html=True)
+
+        # ২. লিডারবোর্ড এবং ফিল্টার
+        top_col1, top_col2 = st.columns([1.5, 1])
+        with top_col1:
+            st.markdown("#####  Leaderboard Analysis")
+            l_type_sum = st.radio("Show Top 10 for:", ["ARTIST", "QC"], horizontal=True, key="role_top_v24")
+            top_filt = df_summary[df_summary[col_role].str.strip().str.upper() == l_type_sum]
+            top_10_df = top_filt.groupby('USER NAME ALL')['LIVE ORDER'].sum().sort_values(ascending=False).head(10).reset_index()
+            fig_top_bar = px.bar(top_10_df, x='LIVE ORDER', y='USER NAME ALL', orientation='h', text='LIVE ORDER', height=300, color='LIVE ORDER', color_continuous_scale='Blues')
+            fig_top_bar.update_layout(showlegend=False, margin=dict(t=10, b=10), yaxis={'categoryorder':'total ascending'})
+            st.plotly_chart(fig_top_bar, use_container_width=True)
+
+        with top_col2:
+            st.markdown("##### ⚙️ Selection & Controls")
+            l_role = st.selectbox("Identify Role", ["ARTIST", "QC"], index=0 if l_type_sum=="ARTIST" else 1)
+            names_list = sorted(df_summary[df_summary[col_role].str.strip().str.upper() == l_role]['USER NAME ALL'].unique().tolist())
+            a_sel = st.selectbox(f"Choose {l_role}", names_list, key="sum_a_v24")
+            m_list_all = sorted(df_summary['MONTH'].unique().tolist(), reverse=True)
+            m_sel = st.multiselect("Filter Months", m_list_all, key="sum_m_v24")
+
+        # ডাটা ফিল্টারিং
         s_df = df_summary[df_summary['USER NAME ALL'] == a_sel]
         if m_sel: s_df = s_df[s_df['MONTH'].isin(m_sel)]
         
         if not s_df.empty:
-            # র‍্যাঙ্কিং ব্যাজ
-            if len(m_sel) == 1:
-                a_role = s_df[col_target].iloc[0]
-                month_all = df_summary[(df_summary['MONTH'] == m_sel[0]) & (df_summary[col_target] == a_role)]
-                rank_list = month_all.groupby('USER NAME ALL')['LIVE ORDER'].sum().sort_values(ascending=False)
-                try:
-                    artist_rank = rank_list.index.get_loc(a_sel) + 1
-                    rank_badge = f"#{artist_rank} of {len(rank_list)}"
-                except: rank_badge = "N/A"
-            else: rank_badge = "Pick 1 Month"
-
-            # ৩. KPI রঙিন কার্ডস (পয়েন্ট ৪)
+            # ক্যালকুলেশনস
+            total_days = s_df['DAY'].sum() if s_df['DAY'].sum() > 0 else 1
+            fp_mrp_avg = (s_df['FLOORPLAN'].sum() + s_df['MEASUREMENT'].sum()) / total_days
+            daily_time_avg = s_df['WORKING TIME'].sum() / total_days
+            perf_score = min(100, int((fp_mrp_avg / 5 * 50) + (daily_time_avg / 390 * 50)))
+            
+            # ৩. মেইন স্কোর কার্ডস (আপনার চাহিদা অনুযায়ী আগের সেই সুন্দর স্টাইল)
             st.markdown("<br>", unsafe_allow_html=True)
-            k_cols = st.columns(8)
-            specs_data = [
-                {"label": "Rank", "val": rank_badge, "cls": "cl-total"},
-                {"label": "Live Orders", "val": int(s_df["LIVE ORDER"].sum()), "cls": "cl-total"},
+            sc1, sc2, sc3, sc4 = st.columns(4)
+            
+            with sc1:
+                st.markdown(f'''<div class="main-metric-card">
+                    <small style="color:#64748b; font-weight:bold;">PERFORMANCE SCORE</small>
+                    <div class="score-circle-v2"><h3>{perf_score}</h3></div>
+                    <small style="color:#3b82f6;">Efficiency Rating</small>
+                </div>''', unsafe_allow_html=True)
+            
+            with sc2:
+                st.markdown(f'''<div class="main-metric-card">
+                    <small style="color:#64748b; font-weight:bold;">MONTHLY VOLUME</small>
+                    <h1 style="margin:5px 0; color:#1e293b;">{int(s_df["LIVE ORDER"].sum())}</h1>
+                    <small style="color:#64748b;">Total Orders Completed</small>
+                </div>''', unsafe_allow_html=True)
+
+            with sc3:
+                st.markdown(f'''<div class="main-metric-card">
+                    <small style="color:#64748b; font-weight:bold;">EFFICIENCY (ORD/DAY)</small>
+                    <h1 style="margin:5px 0; color:#10b981;">{round(fp_mrp_avg, 2)}</h1>
+                    <small style="color:#64748b;">Target: 5.0</small>
+                </div>''', unsafe_allow_html=True)
+
+            with sc4:
+                st.markdown(f'''<div class="main-metric-card">
+                    <small style="color:#64748b; font-weight:bold;">DAILY TIME AVG</small>
+                    <h1 style="margin:5px 0; color:#f59e0b;">{int(daily_time_avg)}m</h1>
+                    <small style="color:#64748b;">Target: 390m</small>
+                </div>''', unsafe_allow_html=True)
+
+            # ৪. রঙিন ৮টি KPI কার্ড
+            st.markdown("<br>", unsafe_allow_html=True)
+            k_cols = st.columns(7)
+            
+            # র‍্যাঙ্কিং লজিক
+            a_type = s_df[col_role].iloc[0]
+            r_base = df_summary[(df_summary['MONTH'] == m_sel[0]) & (df_summary[col_role] == a_type)] if len(m_sel) == 1 else df_summary[df_summary[col_role] == a_type]
+            r_list = r_base.groupby('USER NAME ALL')['LIVE ORDER'].sum().sort_values(ascending=False)
+            try: r_idx = r_list.index.get_loc(a_sel) + 1; r_badge = f"#{r_idx}"
+            except: r_badge = "N/A"
+
+            kpi_data = [
+                {"label": "Rank", "val": r_badge, "cls": "cl-total"},
                 {"label": "Floorplan", "val": int(s_df["FLOORPLAN"].sum()), "cls": "cl-fp"},
                 {"label": "Measurement", "val": int(s_df["MEASUREMENT"].sum()), "cls": "cl-mrp"},
                 {"label": "AutoCAD", "val": int(s_df["AUTOCAD"].sum()), "cls": "cl-cad"},
@@ -286,70 +478,34 @@ try:
                 {"label": "VanBree", "val": int(s_df.get("VANBREEMEDIA", pd.Series([0])).sum()), "cls": "cl-vb"},
                 {"label": "Rework", "val": int(s_df["RE_WORK"].sum()), "cls": "cl-rework"}
             ]
-            for i, item in enumerate(specs_data):
-                k_cols[i].markdown(f'<div class="metric-box {item["cls"]}"><small>{item["label"]}</small><br><b>{item["val"]}</b></div>', unsafe_allow_html=True)
+            for i, item in enumerate(kpi_data):
+                k_cols[i].markdown(f'<div class="info-card-sleek {item["cls"]}"><small>{item["label"]}</small><br><b>{item["val"]}</b></div>', unsafe_allow_html=True)
 
-            # ৪. এভারেজ চার্টস (পয়েন্ট ২: দশমিক ২ ঘর ও ভিজিবল ভ্যালু)
-            st.markdown("<br>", unsafe_allow_html=True)
-            c1, c2 = st.columns(2)
-            with c1:
-                st.subheader("📈 Average Orders Analysis")
-                avg_ord_df = pd.DataFrame({
-                    "Spec": ["FP", "MRP", "CAD", "UA", "VB", "RW"],
-                    "Value": [
-                        s_df['FP AVG'].mean(), s_df['MRP AVG'].mean(), s_df['CAD AVG'].mean(),
-                        s_df['URBAN ANGLES'].sum()/20, s_df.get('VANBREEMEDIA', pd.Series([0])).sum()/20, s_df['RE_WORK'].sum()/20
-                    ]
-                })
-                fig_avg_o = px.bar(avg_ord_df, x="Spec", y="Value", text="Value", color="Spec", height=380)
-                fig_avg_o.update_traces(texttemplate='%{text:.2f}', textposition='outside', cliponaxis=False)
-                fig_avg_o.update_layout(yaxis_range=[0, avg_ord_df['Value'].max() * 1.4], showlegend=False)
-                st.plotly_chart(fig_avg_o, use_container_width=True)
-
-            with c2:
-                st.subheader("⏱️ Average Time (Min)")
-                def get_t_avg(t, o): return round(s_df[t].sum() / s_df[o].sum(), 2) if s_df[o].sum() > 0 else 0
-                avg_t_map = {
-                    "FP": get_t_avg('FP TIME', 'FLOORPLAN'), "MRP": get_t_avg('MRP TIME', 'MEASUREMENT'),
-                    "CAD": get_t_avg('CAD TIME', 'AUTOCAD'), "UA": get_t_avg('URBAN ANGLES TIME', 'URBAN ANGLES'),
-                    "RW": get_t_avg('RE_WORK TIME', 'RE_WORK')
-                }
-                fig_avg_t = px.bar(x=list(avg_t_map.keys()), y=list(avg_t_map.values()), text=list(avg_t_map.values()), color=list(avg_t_map.keys()), height=380)
-                fig_avg_t.update_traces(texttemplate='%{text:.2f}', textposition='outside', cliponaxis=False)
-                fig_avg_t.update_layout(yaxis_range=[0, max(avg_t_map.values()) * 1.4], showlegend=False)
-                st.plotly_chart(fig_avg_t, use_container_width=True)
-
-            # ৫. গেজ এবং রাডার
+            # ৫. চার্ট সেকশন
             st.markdown("---")
-            rc1, rc2 = st.columns([1, 1])
-            with rc1:
-                st.subheader("🎯 Quality Status")
-                re_rate = round((s_df['RE_WORK'].sum() / s_df['LIVE ORDER'].sum() * 100), 2) if s_df['LIVE ORDER'].sum() > 0 else 0
-                import plotly.graph_objects as go
-                fig_g = go.Figure(go.Indicator(mode="gauge+number", value=re_rate, gauge={'axis': {'range': [0, 10]}, 'bar': {'color': "#ef4444"}, 'steps': [{'range': [0, 2], 'color': "#dcfce7"}, {'range': [2, 5], 'color': "#fef9c3"}]}, title={'text': "Rework %"}))
-                fig_g.update_layout(height=350)
-                st.plotly_chart(fig_g, use_container_width=True)
-            with rc2:
-                st.subheader("🧬 Skill Balance")
-                r_vals = [s_df['FLOORPLAN'].sum(), s_df['MEASUREMENT'].sum(), s_df['AUTOCAD'].sum(), s_df['URBAN ANGLES'].sum(), s_df.get('VANBREEMEDIA', pd.Series([0])).sum()]
-                fig_r = go.Figure(data=go.Scatterpolar(r=r_vals, theta=['FP','MRP','CAD','UA','VB'], fill='toself'))
-                fig_r.update_layout(height=350, polar=dict(radialaxis=dict(visible=False)))
-                st.plotly_chart(fig_r, use_container_width=True)
+            c_a, c_b = st.columns(2)
+            spec_colors = {"FP": "#3b82f6", "MRP": "#10b981", "CAD": "#f59e0b", "UA": "#8b5cf6", "VB": "#06b6d4", "RW": "#f43f5e"}
+            with c_a:
+                v_df = pd.DataFrame({"Spec": ["FP", "MRP", "CAD", "UA", "VB", "RW"], "Val": [s_df['FLOORPLAN'].sum()/total_days, s_df['MEASUREMENT'].sum()/total_days, s_df['AUTOCAD'].sum()/total_days, s_df['URBAN ANGLES'].sum()/total_days, s_df.get('VANBREEMEDIA', pd.Series([0])).sum()/total_days, s_df['RE_WORK'].sum()/total_days]})
+                st.plotly_chart(px.bar(v_df, x="Spec", y="Val", color="Spec", color_discrete_map=spec_colors, text_auto='.2f', height=350, title="Order Avg Distribution"), use_container_width=True)
+            with c_b:
+                def get_t(t, o): return round(s_df[t].sum() / s_df[o].sum(), 2) if s_df[o].sum() > 0 else 0
+                t_df = pd.DataFrame({"Spec": ["FP", "MRP", "CAD", "UA", "RW"], "Time": [get_t('FP TIME','FLOORPLAN'), get_t('MRP TIME','MEASUREMENT'), get_t('CAD TIME','AUTOCAD'), get_t('URBAN ANGLES TIME','URBAN ANGLES'), get_t('RE_WORK TIME','RE_WORK')]})
+                st.plotly_chart(px.bar(t_df, x="Spec", y="Time", color="Spec", color_discrete_map=spec_colors, text_auto='.1f', height=350, title="Avg Processing Time (Min)"), use_container_width=True)
 
-            # ৬. নতুন সেকশন: ফুল ডাটা রেকর্ড লজ (আপনার চাহিদা অনুযায়ী)
+            # ৬. Detailed Record Table (পয়েন্ট ৪ এর সমাধান)
             st.markdown("---")
-            st.subheader(f"📋 Monthly Detailed Record: {a_sel}")
-            cols_to_show = [
-                'MONTH', 'DAY', 'LIVE ORDER', 'FLOORPLAN', 'MEASUREMENT', 'AUTOCAD', 'VANBREEMEDIA', 'RE_WORK',
-                'FP TIME', 'MRP TIME', 'CAD TIME', 'URBAN ANGLES TIME', 'RE_WORK TIME', 'WORKING TIME',
-                'TUESDAY TO FRIDAY AVG', 'SATURDAY TO MONDAY'
+            st.markdown("#####  Detailed Monthly Records")
+            target_cols = [
+                'MONTH', 'DAY', 'LIVE ORDER', 'FP TIME', 'MRP TIME', 'CAD TIME', 
+                'URBAN ANGLES TIME', 'RE_WORK TIME', 'WORKING TIME', 
+                'TUESDAY TO FRIDAY AVG', 'SATURDAY TO MONDAY', 'FP/MRP AVG'
             ]
-            # কলামগুলো শিটে আছে কি না তা নিশ্চিত করা
-            existing_cols = [c for c in cols_to_show if c in s_df.columns]
-            st.dataframe(s_df[existing_cols], use_container_width=True, hide_index=True)
+            available_cols = [c for c in target_cols if c in s_df.columns]
+            st.dataframe(s_df[available_cols], use_container_width=True, hide_index=True)
 
         else:
-            st.warning("No data found for the selected artist/month.")
+            st.warning("No data found for the current selection.")
     # --- ৬. ট্র্যাকিং সিস্টেম পেজ ---
     elif page == "Tracking System":
         st.title("Performance Tracking")
