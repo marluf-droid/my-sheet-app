@@ -14,73 +14,70 @@ st.markdown("""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
     html, body, [class*="css"] { font-family: 'Inter', sans-serif; }
-    
-    /* ১. মূল কার্ডের স্টাইল এবং অ্যানিমেশন সেট করা */
-    .metric-card { 
-        padding: 15px; 
-        border-radius: 12px; 
-        text-align: center; 
-        color: #1e293b; 
-        background: #ffffff; 
-        border-top: 5px solid #e2e8f0;
-        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
-        transition: all 0.3s ease-in-out; /* এটি অ্যানিমেশনকে স্মুথ করবে */
-        cursor: pointer;
-    }
 
-    /* ২. মাউস নিলে যে ইফেক্ট হবে (Highlight Effect) */
-    .metric-card:hover {
-        transform: translateY(-8px); /* কার্ডটি ৮ পিক্সেল ওপরে উঠে আসবে */
-        box-shadow: 0 12px 20px rgba(0, 0, 0, 0.15); /* ছায়া আরও গভীর হবে */
-        border-bottom: 2px solid rgba(0, 0, 0, 0.05); /* নিচে হালকা বর্ডার যোগ হবে */
-    }
-            /* ১. Performance Insights এবং Monthly Summary কার্ডের জন্য ট্রানজিশন সেট করা */
-    .metric-box, .metric-card-box {
-        transition: all 0.3s ease-in-out;
-        cursor: pointer;
-    }
-
-    /* ২. মাউস নিলে এই কার্ডগুলোও ওপরের দিকে ভেসে উঠবে এবং শ্যাডো বাড়বে */
-    .metric-box:hover, .metric-card-box:hover {
-        transform: translateY(-5px); /* ৫ পিক্সেল ওপরে উঠবে */
-        box-shadow: 0 10px 15px rgba(0, 0, 0, 0.1); /* শ্যাডো বা ছায়া গভীর হবে */
-        filter: brightness(1.03); /* সামান্য উজ্জ্বল হবে */
-    }
-            /* ১. পেজ লোড হওয়ার সময় নিচ থেকে উপরে ভেসে ওঠার অ্যানিমেশন তৈরি */
+    /* ১. পেজ লোড হওয়ার অ্যানিমেশন (fadeInUp) */
     @keyframes fadeInUp {
-        from {
-            opacity: 0;
-            transform: translateY(40px); /* ৪০ পিক্সেল নিচ থেকে শুরু হবে */
-        }
-        to {
-            opacity: 1;
-            transform: translateY(0); /* আগের জায়গায় ফিরে আসবে */
-        }
+        from { opacity: 0; transform: translateY(40px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+    .main .block-container { animation: fadeInUp 0.8s ease-out; }
+
+    /* ২. প্রিমিয়াম ড্যাশবোর্ড হেডার */
+    .dashboard-header-premium {
+        background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%) !important;
+        color: white !important; padding: 25px 15px !important;
+        border-radius: 12px !important; margin-bottom: 25px !important;
+        text-align: center !important; border-bottom: 4px solid #3b82f6;
     }
 
-    /* ২. স্ট্রীমলিটের মেইন কন্টেন্ট ব্লককে টার্গেট করে অ্যানিমেশন অ্যাপ্লাই করা */
-    .main .block-container {
-        animation: fadeInUp 0.8s ease-out;
-    }
-
-    /* ৩. কার্ডগুলোর জন্য একটু দেরি করে অ্যানিমেশন হওয়া (Optional: পপ-আপ ইফেক্ট) */
-    .metric-card, .metric-box, .metric-card-box {
+    /* ৩. আধুনিক কালারফুল মেট্রিক কার্ড (Dashboard) */
+    .metric-card-v3 {
+        background: white !important; padding: 15px !important;
+        border-radius: 10px !important; text-align: center !important;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05) !important;
+        transition: all 0.3s ease-in-out !important;
+        border-top: 6px solid #ccc; height: 125px;
+        display: flex; flex-direction: column; justify-content: center;
         animation: fadeInUp 1s ease-out;
     }
+    .metric-card-v3:hover { transform: translateY(-8px) !important; box-shadow: 0 12px 24px rgba(0, 0, 0, 0.1) !important; }
+    .metric-card-v3 small { color: #64748b !important; font-weight: 700; text-transform: uppercase; font-size: 11px; }
+    .metric-card-v3 h2 { color: #1e293b !important; font-size: 30px !important; margin: 5px 0 0 0 !important; font-weight: 800; }
+
+    /* ৪. কার্ডের জন্য কালার বর্ডার থিম */
+    .border-rework { border-top-color: #ef4444 !important; background: #fff5f5 !important; }
+    .border-fp { border-top-color: #3b82f6 !important; background: #f0f7ff !important; }
+    .border-mrp { border-top-color: #10b981 !important; background: #f0fdf4 !important; }
+    .border-cad { border-top-color: #f59e0b !important; background: #fffbeb !important; }
+    .border-ua { border-top-color: #8b5cf6 !important; background: #f5f3ff !important; }
+    .border-vb { border-top-color: #06b6d4 !important; background: #ecfeff !important; }
+    .border-total { border-top-color: #64748b !important; background: #f8fafc !important; }
+
+    /* ৫. আধুনিক গ্লাস-বক্স ট্যাব ডিজাইন */
+    [data-baseweb="tab-list"] {
+        background: rgba(241, 245, 249, 0.5) !important;
+        backdrop-filter: blur(8px); border-radius: 12px !important;
+        padding: 6px !important; gap: 10px !important;
+        border: 1px solid rgba(226, 232, 240, 0.8); margin-bottom: 20px;
     }
-    .rework-border { border-top-color: #ef4444; background-color: #fff1f0; }
-    .fp-border { border-top-color: #3b82f6; background-color: #e6f7ff; }
-    .mrp-border { border-top-color: #10b981; background-color: #f6ffed; }
-    .cad-border { border-top-color: #f59e0b; background-color: #fffbe6; }
-    .ua-border { border-top-color: #8b5cf6; background-color: #f9f0ff; }
-    .vanbree-border { border-top-color: #06b6d4; background-color: #e6fffb; }
-    .total-border { border-top-color: #64748b; background-color: #f8fafc; }
-    
-    .stTabs [data-baseweb="tab"] { font-weight: 700; font-size: 16px; padding: 10px 20px; }
-            .metric-box {
+    .stTabs [data-baseweb="tab"] {
+        background-color: transparent !important; border-radius: 10px !important;
+        padding: 8px 20px !important; font-weight: 600 !important;
+        color: #64748b !important; border: none !important; transition: all 0.3s ease !important;
+    }
+    .stTabs [aria-selected="true"] {
+        background-color: white !important; color: #3b82f6 !important;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08) !important; transform: scale(1.02);
+    }
+    .stTabs [data-baseweb="tab-highlight"] { background-color: transparent !important; }
+
+    /* ৬. ছোট মেট্রিক বক্স (Artist Deep-Dive এর জন্য) */
+    .metric-box {
         padding: 10px; border-radius: 10px; text-align: center; margin-bottom: 10px;
         box-shadow: 2px 2px 5px rgba(0,0,0,0.05); border-left: 5px solid #ccc;
+        transition: all 0.3s ease; cursor: pointer;
     }
+    .metric-box:hover { transform: translateY(-5px); box-shadow: 0 10px 15px rgba(0, 0, 0, 0.1); }
     .cl-rework { background-color: #fee2e2; border-left-color: #ef4444; }
     .cl-fp { background-color: #e0f2fe; border-left-color: #3b82f6; }
     .cl-mrp { background-color: #dcfce7; border-left-color: #10b981; }
@@ -88,65 +85,7 @@ st.markdown("""
     .cl-ua { background-color: #f3e8ff; border-left-color: #8b5cf6; }
     .cl-vb { background-color: #ccfbf1; border-left-color: #06b6d4; }
     .cl-total { background-color: #f1f5f9; border-left-color: #64748b; }
-            /* নতুন ড্যাশবোর্ড হেডার */
-    .dashboard-header-modern {
-        background: linear-gradient(90deg, #0f172a 0%, #1e293b 100%);
-        color: white; padding: 25px; border-radius: 15px; 
-        margin-bottom: 25px; text-align: center;
-        box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-    }
-    /* উন্নত মেট্রিক কার্ড */
-    .sleek-card-modern {
-        background: white; padding: 18px; border-radius: 12px;
-        text-align: center; border-top: 5px solid #ccc;
-        box-shadow: 0 2px 10px rgba(0,0,0,0.05);
-        transition: transform 0.3s ease;
-    }
-    .sleek-card-modern:hover { transform: translateY(-5px); }
-    .sleek-card-modern h2 { margin: 8px 0 0 0; font-size: 26px; color: #1e293b; }
-    .sleek-card-modern small { color: #64748b; font-weight: 700; text-transform: uppercase; font-size: 11px; }
-            /* --- আধুনিক গ্লাস-বক্স ট্যাব ডিজাইন --- */
-    /* ১. ট্যাব লিস্টের কন্টেইনার (Glass Background) */
-    [data-baseweb="tab-list"] {
-        background: rgba(241, 245, 249, 0.5) !important;
-        backdrop-filter: blur(8px);
-        border-radius: 12px !important;
-        padding: 6px !important;
-        gap: 10px !important;
-        border: 1px solid rgba(226, 232, 240, 0.8);
-        margin-bottom: 20px;
-    }
-
-    /* ২. প্রতিটি ট্যাব (Normal State) */
-    .stTabs [data-baseweb="tab"] {
-        background-color: transparent !important;
-        border-radius: 10px !important;
-        padding: 8px 20px !important;
-        font-weight: 600 !important;
-        color: #64748b !important;
-        transition: all 0.3s ease !important;
-        border: none !important;
-    }
-
-    /* ৩. একটিভ ট্যাব হাইলাইট (Glass Box Curve Effect) */
-    .stTabs [aria-selected="true"] {
-        background-color: white !important;
-        color: #3b82f6 !important;
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08) !important;
-        transform: scale(1.02);
-    }
-
-    /* ৪. মাউস নিলে হালকা গ্লো হবে */
-    .stTabs [data-baseweb="tab"]:hover {
-        color: #3b82f6 !important;
-        background: rgba(255, 255, 255, 0.5) !important;
-    }
-
-    /* ৫. ডিফল্ট নিচের লাল লাইনটি বন্ধ করা */
-    .stTabs [data-baseweb="tab-highlight"] {
-        background-color: transparent !important;
-    }
-    </style>
+</style>
     """, unsafe_allow_html=True)
 
 # --- ২. ডাটা কানেকশন ফাংশনস ---
@@ -158,46 +97,46 @@ def get_gspread_client():
     creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_info, scope)
     return gspread.authorize(creds)
 
-# জেনারেল ডাটা (Dashboard & Tracking এর জন্য)
+# ডাটা লোডিং ফাংশন (তারিখের এরর এবং কলামের নামের অমিল ফিক্স করা হয়েছে)
 @st.cache_data(ttl=600)
 def get_data(sheet_id):
     client = get_gspread_client()
     spreadsheet = client.open_by_key(sheet_id)
     df = pd.DataFrame(spreadsheet.worksheet("DATA").get_all_records())
     
-    # ১. কলামের নামগুলো থেকে অতিরিক্ত স্পেস মুছে ফেলা
+    # কলামের নাম ক্লিন করা
     df.columns = [c.strip() for c in df.columns]
     
-    # ২. জানুয়ারী শিটে "Team name" বা অন্য কোনো ভার্সন থাকলে সেটাকে "Team" এ রূপান্তর করা
-    # এটি খুবই জরুরি কারণ আপনার কোড সব জায়গায় 'Team' খুঁজছে
-    rename_dict = {
-        'Team name': 'Team',
-        'Team Name': 'Team',
-        'TEAM NAME': 'Team',
-        'TEAM': 'Team'
-    }
-    df = df.rename(columns=rename_dict)
+    # জানুয়ারি শিটের "Team name" থাকলে সেটাকে "Team" করা
+    if 'Team name' in df.columns:
+        df = df.rename(columns={'Team name': 'Team'})
 
-    # যদি কোনো কারণে 'Team' কলাম না পাওয়া যায়, তবে একটি খালি কলাম তৈরি করবে যাতে এরর না আসে
-    if 'Team' not in df.columns:
-        df['Team'] = 'Unknown'
-
-    # ৩. তারিখ কনভার্ট করা এবং খালি রো মুছে ফেলা (আগের এররটির সমাধান)
+    # তারিখ কনভার্ট করা এবং খালি রো (NaN) মুছে ফেলা
     df['date'] = pd.to_datetime(df['date'], errors='coerce')
     df = df.dropna(subset=['date']) 
     df['date'] = df['date'].dt.date
     
-    # ৪. কলাম ভ্যালু নিউমেরিক করা
+    # নিউমেরিক কনভার্সন
     df['Time'] = pd.to_numeric(df['Time'], errors='coerce').fillna(0)
     df['SQM'] = pd.to_numeric(df['SQM'], errors='coerce').fillna(0)
     
-    # ৫. ডাটা ক্লিন করা
     text_cols = ['Product', 'Job Type', 'Employee Type', 'Team', 'Name', 'Shift']
     for col in text_cols:
         if col in df.columns: 
             df[col] = df[col].astype(str).str.strip()
-            
     return df
+
+# নতুন শিটে (Shortfall Analysis) ডাটা সেভ করার ফাংশন
+def write_to_shortfall_sheet(sheet_id, worksheet_name, data_list):
+    try:
+        client = get_gspread_client()
+        spreadsheet = client.open_by_key(sheet_id)
+        worksheet = spreadsheet.worksheet(worksheet_name)
+        worksheet.append_row(data_list)
+        return True
+    except Exception as e:
+        st.error(f"Error writing to sheet: {e}")
+        return False
 
 # Monthly Summary ডাটা (আপনার নতুন Monthly Efficiency শিট থেকে)
 @st.cache_data(ttl=600)
@@ -285,16 +224,36 @@ try:
 
     # --- ৪. ড্যাশবোর্ড পেজ (আগের সব ফিচার সহ) ---
     if page == "Dashboard":
-        st.markdown("<h2 style='text-align: center;'>Performance Analytics 2025</h2>", unsafe_allow_html=True)
+        # ১. প্রিমিয়াম হেডার (যদি যোগ করতে চান)
+        st.markdown(f"""
+            <div class="dashboard-header-premium">
+                <h2 style='margin:0; color: white;'>🚀 Operational Excellence Dashboard</h2>
+                <p style='margin:0; opacity:0.8; color: white; font-size: 13px;'>{selected_month} Analytics • Performance Metrics</p>
+            </div>
+        """, unsafe_allow_html=True)
         
+        # ২. নতুন ৭টি কালারফুল মেট্রিক কার্ড
         m1, m2, m3, m4, m5, m6, m7 = st.columns(7)
-        with m1: st.markdown(f'<div class="metric-card rework-border">Rework AVG<br><h2>{calculate_man_day_avg(df, "Floorplan Queue", "Rework")}</h2></div>', unsafe_allow_html=True)
-        with m2: st.markdown(f'<div class="metric-card fp-border">FP AVG<br><h2>{calculate_man_day_avg(df, "Floorplan Queue", "Live Job")}</h2></div>', unsafe_allow_html=True)
-        with m3: st.markdown(f'<div class="metric-card mrp-border">MRP AVG<br><h2>{calculate_man_day_avg(df, "Measurement Queue", "Live Job")}</h2></div>', unsafe_allow_html=True)
-        with m4: st.markdown(f'<div class="metric-card cad-border">CAD AVG<br><h2>{calculate_man_day_avg(df, "Autocad Queue", "Live Job")}</h2></div>', unsafe_allow_html=True)
-        with m5: st.markdown(f'<div class="metric-card ua-border">UA AVG<br><h2>{calculate_man_day_avg(df, "Urban Angles", "Live Job")}</h2></div>', unsafe_allow_html=True)
-        with m6: st.markdown(f'<div class="metric-card vanbree-border">Van Bree AVG<br><h2>{calculate_man_day_avg(df, "Van Bree Media", "Live Job")}</h2></div>', unsafe_allow_html=True)
-        with m7: st.markdown(f'<div class="metric-card total-border">Total Order<br><h2>{len(df)}</h2></div>', unsafe_allow_html=True)
+        
+        dash_stats = [
+            {"label": "Rework AVG", "val": calculate_man_day_avg(df, "Floorplan Queue", "Rework"), "cls": "border-rework"},
+            {"label": "FP AVG", "val": calculate_man_day_avg(df, "Floorplan Queue", "Live Job"), "cls": "border-fp"},
+            {"label": "MRP AVG", "val": calculate_man_day_avg(df, "Measurement Queue", "Live Job"), "cls": "border-mrp"},
+            {"label": "CAD AVG", "val": calculate_man_day_avg(df, "Autocad Queue", "Live Job"), "cls": "border-cad"},
+            {"label": "UA AVG", "val": calculate_man_day_avg(df, "Urban Angles", "Live Job"), "cls": "border-ua"},
+            {"label": "Van Bree AVG", "val": calculate_man_day_avg(df, "Van Bree Media", "Live Job"), "cls": "border-vb"},
+            {"label": "Total Order", "val": len(df), "cls": "border-total"}
+        ]
+        
+        cols_list = [m1, m2, m3, m4, m5, m6, m7]
+        for i, item in enumerate(dash_stats):
+            with cols_list[i]:
+                st.markdown(f"""
+                    <div class="metric-card-v3 {item['cls']}">
+                        <small>{item['label']}</small>
+                        <h2>{item['val']}</h2>
+                    </div>
+                """, unsafe_allow_html=True)
 
         st.markdown("<br>", unsafe_allow_html=True)
         tab1, tab2, tab3 = st.tabs(["📉 Overview", " Team & Artist Summary", " Artist Analysis"])
@@ -616,19 +575,142 @@ try:
             st.warning("No data found for the current selection.")
     # --- ৬. ট্র্যাকিং সিস্টেম পেজ ---
     elif page == "Tracking System":
-        st.title("Performance Tracking")
-        criteria = st.selectbox("Criteria", ["All", "Short IP", "Spending More Time", "High Time vs SQM"])
+        st.markdown(f"""
+            <div class="dashboard-header-premium">
+                <h2 style='margin:0; color: white;'>🛠️ {selected_month} Performance Tracking</h2>
+                <p style='margin:0; opacity:0.8; color: white; font-size: 13px;'>Data Cleaning & Efficiency Analysis</p>
+            </div>
+        """, unsafe_allow_html=True)
+
+        TARGET_SHEET_ID = "1tt-y8QozVy6VU9epGW337UNn763nwu_87df6xkpadp4"
         tdf = df.copy()
         tdf['RT Link'] = tdf['Ticket ID'].apply(lambda x: f"https://tickets.bright-river.cc/Ticket/Display.html?id={x}")
-        
-        s_mt = (((tdf['Employee Type'] == 'QC') & (tdf['Time'] > 20)) | ((tdf['Employee Type'] == 'Artist') & ((tdf['Time'] >= 150) | ((tdf['Product'] == 'Measurement Queue') & (tdf['Time'] > 40)))))
-        if criteria == "Short IP": tdf = tdf[(((tdf['Employee Type'] == 'QC') & (tdf['Time'] < 2)) | ((tdf['Employee Type'] == 'Artist') & (((tdf['Product'] == 'Floorplan Queue') & (tdf['Time'] <= 15)) | ((tdf['Product'] == 'Measurement Queue') & (tdf['Time'] < 5)) | (~tdf['Product'].isin(['Floorplan Queue', 'Measurement Queue']) & (tdf['Time'] <= 10)))))]
-        elif criteria == "Spending More Time": tdf = tdf[s_mt]
-        elif criteria == "High Time vs SQM": tdf = tdf[(tdf['Time'] > (tdf['SQM'] + 15)) & ~s_mt]
-        
-        st.metric("Total Jobs Found", len(tdf))
-        cols_to_show = ['Shift', 'Time', 'Ticket ID', 'RT Link', 'Name', 'date', 'Product', 'SQM', 'Floor', 'Labels', 'Job Type', 'Team']
-        st.dataframe(tdf[cols_to_show], column_config={"RT Link": st.column_config.LinkColumn("RT", display_text="Open")}, use_container_width=True, hide_index=True)
+
+        if 'selected_ticket' not in st.session_state:
+            st.session_state.selected_ticket = None
+
+        t_tab1, t_tab2, t_tab3 = st.tabs(["⚡ Short In Progress", "⏳ Spending More Time", "📊 High Time vs SQM"])
+        cols_to_show = ['Ticket ID', 'RT Link', 'Name', 'Time', 'SQM', 'Floor', 'Labels', 'Product', 'Team']
+
+        # --- ড্রপডাউন লিস্টসমূহ ---
+        sip_reasons = [
+            "Artist didn't do anything.",
+            "Artist is not a German artist, but German order assigned to him.",
+            "Commented in slack, no work has been done on it yet.",
+            "No source was availabe .",
+            "Order reject by client; no work has been done on it yet.",
+            "Sent for Combine.",
+            "Sent for reconvert.",
+            "This order is paused for the next shift; no work has been done on it yet.",
+            "Team Leader wrong",
+            "Changed assignee",
+            "Counted in previous day"
+        ]
+
+        smt_reasons = [
+            "Slow work",
+            "Sleeping",
+            "Takes more time to solve multiple roof",
+            "Forgot to change status",
+            "UA Artist",
+            "Unnecessary breaks",
+            "Sudden Sick",
+            "Late in office"
+        ]
+
+        # --- ট্যাব ১: Short In Progress ---
+        with t_tab1:
+            st.info("💡 টিপস: টেবিলের রো সিলেক্ট করলে নিচের বক্সে আইডি অটোমেটিক বসে যাবে।")
+            sip_mask = (((tdf['Employee Type'] == 'QC') & (tdf['Time'] < 2)) | 
+                        ((tdf['Employee Type'] == 'Artist') & (
+                            ((tdf['Product'] == 'Floorplan Queue') & (tdf['Time'] <= 15)) | 
+                            ((tdf['Product'] == 'Measurement Queue') & (tdf['Time'] < 5))
+                        )))
+            sip_df = tdf[sip_mask].copy()
+            
+            event = st.dataframe(sip_df[cols_to_show], column_config={"RT Link": st.column_config.LinkColumn("RT", display_text="Open")},
+                                 width="stretch", hide_index=True, on_select="rerun", selection_mode="single-row")
+
+            if event and event.selection.rows:
+                st.session_state.selected_ticket = sip_df.iloc[event.selection.rows[0]]['Ticket ID']
+
+            st.markdown("---")
+            with st.expander("📝 Action: Add to Shortfall Sheet", expanded=True):
+                with st.form("sip_form"):
+                    t_list = list(sip_df['Ticket ID'].unique())
+                    default_idx = t_list.index(st.session_state.selected_ticket) if st.session_state.selected_ticket in t_list else 0
+                    
+                    c1, c2 = st.columns([1, 2])
+                    t_id = c1.selectbox("Select Ticket ID", t_list, index=default_idx)
+                    comment = c2.selectbox("Reason for Short IP", sip_reasons)
+                    
+                    if st.form_submit_button("Submit to Short Inprogress"):
+                        row = sip_df[sip_df['Ticket ID'] == t_id].iloc[0]
+                        # Status (index 3) খালি রাখা হয়েছে ("")
+                        data = [str(t_id), row['Name'], str(row['date']), "", row['Team'], comment]
+                        if write_to_shortfall_sheet(TARGET_SHEET_ID, "Short Inprogress", data):
+                            st.success(f"Ticket #{t_id} reported successfully!")
+                            st.session_state.selected_ticket = None
+
+        # --- ট্যাব ২: Spending More Time ---
+        with t_tab2:
+            smt_mask = (((tdf['Employee Type'] == 'QC') & (tdf['Time'] > 20)) | 
+                        ((tdf['Employee Type'] == 'Artist') & (
+                            ((tdf['Product'] == 'Floorplan Queue') & (tdf['Time'] >= 150)) | 
+                            ((tdf['Product'] == 'Measurement Queue') & (tdf['Time'] > 40))
+                        )))
+            smt_df = tdf[smt_mask].copy()
+            
+            event_smt = st.dataframe(smt_df[cols_to_show], column_config={"RT Link": st.column_config.LinkColumn("RT", display_text="Open")},
+                                     width="stretch", hide_index=True, on_select="rerun", selection_mode="single-row")
+
+            if event_smt and event_smt.selection.rows:
+                st.session_state.selected_ticket = smt_df.iloc[event_smt.selection.rows[0]]['Ticket ID']
+
+            with st.expander("📝 Action: Report High Time", expanded=True):
+                with st.form("smt_form"):
+                    s_list = list(smt_df['Ticket ID'].unique())
+                    s_idx = s_list.index(st.session_state.selected_ticket) if st.session_state.selected_ticket in s_list else 0
+                    
+                    c1, c2, c3 = st.columns(3)
+                    t_id_smt = c1.selectbox("Select Ticket ID", s_list, index=s_idx)
+                    extra_t = c2.number_input("Extra Time (Min)", min_value=0)
+                    obs = c3.selectbox("Reason", smt_reasons)
+                    tl_note = st.text_area("Additional Observation")
+                    
+                    if st.form_submit_button("Submit Analysis"):
+                        row_smt = smt_df[smt_df['Ticket ID'] == t_id_smt].iloc[0]
+                        data_smt = [str(t_id_smt), row_smt['Name'], str(row_smt['date']), row_smt['Team'], str(row_smt['Time']), str(extra_t), f"{obs}: {tl_note}"]
+                        if write_to_shortfall_sheet(TARGET_SHEET_ID, "Spending More Time", data_smt):
+                            st.success(f"Analysis for Ticket #{t_id_smt} saved!")
+
+        # --- ট্যাব ৩: High Time vs SQM ---
+        with t_tab3:
+            hts_mask = (tdf['Time'] > (tdf['SQM'] + 15)) & (~smt_mask)
+            hts_df = tdf[hts_mask].copy()
+            
+            event_hts = st.dataframe(hts_df[cols_to_show], column_config={"RT Link": st.column_config.LinkColumn("RT", display_text="Open")},
+                                     width="stretch", hide_index=True, on_select="rerun", selection_mode="single-row")
+
+            if event_hts and event_hts.selection.rows:
+                st.session_state.selected_ticket = hts_df.iloc[event_hts.selection.rows[0]]['Ticket ID']
+
+            with st.expander("📝 Action: Report SMT (Time vs SQM)", expanded=True):
+                with st.form("hts_form"):
+                    h_list = list(hts_df['Ticket ID'].unique())
+                    h_idx = h_list.index(st.session_state.selected_ticket) if st.session_state.selected_ticket in h_list else 0
+                    
+                    ca, cb, cc = st.columns(3)
+                    t_id_hts = ca.selectbox("Select Ticket ID", h_list, index=h_idx)
+                    e_time = cb.number_input("Extra Time (vs SQM)", min_value=0)
+                    reason = cc.selectbox("Reason", smt_reasons)
+                    note = st.text_area("Analysis Note")
+                    
+                    if st.form_submit_button("Submit to SMT Sheet"):
+                        row_hts = hts_df[hts_df['Ticket ID'] == t_id_hts].iloc[0]
+                        data_hts = [str(t_id_hts), row_hts['Name'], str(row_hts['date']), row_hts['Team'], str(row_hts['Time']), str(e_time), f"{reason}: {note}"]
+                        if write_to_shortfall_sheet(TARGET_SHEET_ID, "SMT", data_hts): 
+                            st.success(f"Ticket #{t_id_hts} Analysis Saved!")
 
 except Exception as e:
     st.error(f"Error: {e}")
