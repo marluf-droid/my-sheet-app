@@ -189,6 +189,19 @@ try:
     page = st.sidebar.radio("Go to", ["Dashboard", "Monthly Summary", "Tracking System"])
     st.sidebar.markdown("---")
 
+        # --- ম্যানুয়াল রিফ্রেশ বাটন ---
+    st.sidebar.markdown("---") # একটি ডিভাইডার লাইন
+    if st.sidebar.button("🔄 Force Refresh Data", help="Click here to get refresh Data"):
+        # ১. সব ক্যাশ ডাটা ক্লিয়ার করবে
+        st.cache_data.clear()
+        
+        # ২. সেশন স্টেট ক্লিয়ার করবে (যদি ব্যবহার করে থাকেন)
+        if 'raw_data' in st.session_state:
+            del st.session_state.raw_data
+        
+        # ৩. অ্যাপটি নতুন করে রান করবে
+        st.rerun()
+
     # ডাটা লোডিং (Dashboard এবং Tracking এর জন্য)
     if page == "Dashboard" or page == "Tracking System":
         # ১. ডাটা সোর্স অপশন
@@ -859,5 +872,4 @@ try:
 
 except Exception as e:
     st.error(f"Error: {e}")
-
 
