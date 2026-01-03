@@ -85,6 +85,27 @@ st.markdown("""
     .cl-ua { background-color: #f3e8ff; border-left-color: #8b5cf6; }
     .cl-vb { background-color: #ccfbf1; border-left-color: #06b6d4; }
     .cl-total { background-color: #f1f5f9; border-left-color: #64748b; }
+    /* সব পেজের জন্য লাইট প্রিমিয়াম হেডার */
+    .premium-header-light {
+        background: linear-gradient(90deg, #f8fafc 0%, #eff6ff 100%) !important;
+        padding: 22px 28px !important;
+        border-radius: 15px !important;
+        border-left: 8px solid #3b82f6 !important;
+        margin-bottom: 25px !important;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.05) !important;
+    }
+    .premium-header-light h2 {
+        color: #1e293b !important;
+        font-weight: 800 !important;
+        margin: 0 !important;
+        font-size: 26px !important;
+    }
+    .premium-header-light p {
+        color: #64748b !important;
+        margin: 5px 0 0 0 !important;
+        font-size: 14px !important;
+        font-weight: 500 !important;
+    }
 </style>
     """, unsafe_allow_html=True)
 
@@ -224,11 +245,11 @@ try:
 
     # --- ৪. ড্যাশবোর্ড পেজ (আগের সব ফিচার সহ) ---
     if page == "Dashboard":
-        # ১. প্রিমিয়াম হেডার (যদি যোগ করতে চান)
+        # ১. লাইট প্রিমিয়াম হেডার (Dashboard)
         st.markdown(f"""
-            <div class="dashboard-header-premium">
-                <h2 style='margin:0; color: white;'>🚀 Operational Excellence Dashboard</h2>
-                <p style='margin:0; opacity:0.8; color: white; font-size: 13px;'>{selected_month} Analytics • Performance Metrics</p>
+            <div class="premium-header-light">
+                <h2> Operational Excellence Dashboard</h2>
+                <p>{selected_month} Analytics • Real-time Performance Metrics</p>
             </div>
         """, unsafe_allow_html=True)
         
@@ -259,25 +280,143 @@ try:
         tab1, tab2, tab3 = st.tabs(["📉 Overview", " Team & Artist Summary", " Artist Analysis"])
 
         with tab1:
-            c1, c2 = st.columns([2, 1])
-            with c1:
-                trend_df = df.groupby('date').size().reset_index(name='Orders')
-                st.plotly_chart(px.line(trend_df, x='date', y='Orders', markers=True), use_container_width=True)
-            with c2:
-                st.subheader(" Leaderboard")
-                tops = df.groupby('Name').size().sort_values(ascending=False).head(5)
-                for n, c in tops.items(): st.info(f"**{n}** - {c} Orders")
+            # --- প্রথম রো: প্রোডাক্ট লোড এবং লিডারবোর্ড ---
+            c3, c4 = st.columns([1.5, 1])
+            
+            with c3:
+                st.markdown("##### Product Load (Spec Distribution)")
+                
+                # নিশ্চিত করা হচ্ছে যাতে ৬টি ক্যাটাগরিই চার্টে থাকে (ডাটা ০ থাকলেও)
+                all_specs = ["Floorplan Queue", "Measurement Queue", "Autocad Queue", "Urban Angles", "Van Bree Media", "Rework"]
+                
+                # বর্তমান ফিল্টার করা ডাটা থেকে কাউন্ট নেওয়া
+                actual_counts = df['Product'].value_counts().reset_index()
+                actual_counts.columns = ['Product', 'count']
+                
+                # সব স্পেক সহ একটি বেস ডাটাফ্রেম তৈরি
+                spec_df = pd.DataFrame({"Product": all_specs})
+                spec_df = spec_df.merge(actual_counts, on="Product", how="left").fillna(0)
+                
+                # কালার ম্যাপিং
+                color_map = {
+                    "Floorplan Queue": "#3b82f6",
+                    "Measurement Queue": "#10b981",
+                    "Autocad Queue": "#f59e0b",
+                    "Urban Angles": "#8b5cf6",
+                    "Van Bree Media": "#06b6d4",
+                    "Rework": "#ef4444"
+                }
+                
+                fig_spec = px.bar(spec_df, x='count', y='Product', orientation='h', text='count',
+                                 color='Product', color_discrete_map=color_map)
+                
+                fig_spec.update_layout(
+                    showlegend=False, 
+                    plot_bgcolor='rgba(0,0,0,0)', 
+                    xaxis_title=None, 
+                    yaxis_title=None, 
+                    height=400,
+                    margin=dict(t=10, b=10, l=10, r=10),
+                    yaxis={'categoryorder':'total ascending'}
+                )
+                fig_spec.update_traces(textposition='outside')
+                st.plotly_chart(fig_spec, width="stretch")
 
+            with c4:
+                st.markdown("##### Top Performers (Rank)")
+                tops = df.groupby('Name').size().sort_values(ascending=False).head(5)
+                
+                for i, (name, count) in enumerate(tops.items()):
+                    rank_color = "#f59e0b" if i == 0 else "#94a3b8" if i == 1 else "#3b82f6"
+                    st.markdown(f"""
+                        <div style="background:white; padding:12px; border-radius:12px; margin-bottom:10px; display:flex; justify-content:space-between; align-items:center; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); border-left: 5px solid {rank_color};">
+                            <div style="display:flex; align-items:center;">
+                                <div style="background:{rank_color}; color:white; width:28px; height:28px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-weight:bold; font-size:14px;">{i+1}</div>
+                                <span style="margin-left:12px; font-weight:600; color:#1e293b; font-size:14px;">{name}</span>
+                            </div>
+                            <div style="text-align:right;">
+                                <span style="color:{rank_color}; font-weight:bold; font-size:15px;">{count}</span>
+                                <br><small style="color:#64748b; font-size:10px;">Orders</small>
+                            </div>
+                        </div>
+                    """, unsafe_allow_html=True)
+
+            st.markdown("---") 
+
+            # --- দ্বিতীয় রো: ট্রেন্ড লাইন এবং শিফট ডিস্ট্রিবিউশন ---
+            c1, c2 = st.columns([2, 1])
+            
+            with c1:
+                st.markdown("##### Production Trend (Volume over Time)")
+                trend_df = df.groupby('date').size().reset_index(name='Orders')
+                fig_trend = px.area(trend_df, x='date', y='Orders', markers=True, color_discrete_sequence=['#3b82f6'])
+                fig_trend.update_layout(hovermode="x unified", plot_bgcolor='rgba(0,0,0,0)', 
+                                        margin=dict(t=10, b=10, l=10, r=10), height=350)
+                st.plotly_chart(fig_trend, width="stretch")
+            
+            with c2:
+                st.markdown("##### Shift Distribution")
+                shift_df = df['Shift'].value_counts().reset_index()
+                fig_shift = px.pie(shift_df, values='count', names='Shift', hole=0.5,
+                                  color_discrete_sequence=px.colors.qualitative.Pastel)
+                fig_shift.update_layout(margin=dict(t=10, b=10, l=10, r=10), height=350, showlegend=True)
+                st.plotly_chart(fig_shift, width="stretch")
         with tab2:
-            st.subheader("Detailed Team Performance")
-            team_sum = df.groupby(['Team', 'Shift']).agg(Present=('Name', 'nunique'), Orders=('Ticket ID', 'count'), Time=('Time', 'sum'), Rework=('Job Type', lambda x: (x == 'Rework').sum()), FP=('Product', lambda x: (x == 'Floorplan Queue').sum()), MRP=('Product', lambda x: (x == 'Measurement Queue').sum()), CAD=('Product', lambda x: (x == 'Autocad Queue').sum()), UA=('Product', lambda x: (x == 'Urban Angles').sum()), VanBree=('Product', lambda x: (x == 'Van Bree Media').sum()), SQM=('SQM', 'sum')).reset_index()
-            st.dataframe(team_sum, use_container_width=True, hide_index=True)
-            st.markdown("---")
-            st.subheader("Performance Breakdown Section (Artist Summary)")
-            artist_brk = df.groupby(['Name', 'Team', 'Shift']).agg(Order=('Ticket ID', 'count'), Time=('Time', 'sum'), Rework=('Job Type', lambda x: (x == 'Rework').sum()), FP=('Product', lambda x: (x == 'Floorplan Queue').sum()), MRP=('Product', lambda x: (x == 'Measurement Queue').sum()), UA=('Product', lambda x: (x == 'Urban Angles').sum()), CAD=('Product', lambda x: (x == 'Autocad Queue').sum()), VanBree=('Product', lambda x: (x == 'Van Bree Media').sum()), SQM=('SQM', 'sum'), days=('date', 'nunique')).reset_index()
-            artist_brk['Idle'] = (artist_brk['days'] * 400) - artist_brk['Time']
-            artist_brk['Idle'] = artist_brk['Idle'].apply(lambda x: max(0, x))
-            st.dataframe(artist_brk.sort_values(by='Order', ascending=False), use_container_width=True, hide_index=True, height=750)
+        # ১. টিম সামারি টেবিল (সব কলাম সহ)
+            st.markdown("""
+            <div style="background:#f8fafc; padding:10px; border-radius:8px; border-left:5px solid #64748b; margin-bottom:15px;">
+                <h5 style="margin:0; font-weight:bold; color: #0f172a;"> Detailed Team Performance</h5>
+            </div>
+        """, unsafe_allow_html=True)
+        
+        team_sum = df.groupby(['Team', 'Shift']).agg(
+            Present=('Name', 'nunique'), 
+            Orders=('Ticket ID', 'count'), 
+            Time=('Time', 'sum'),
+            Rework=('Job Type', lambda x: (x == 'Rework').sum()),
+            FP=('Product', lambda x: (x == 'Floorplan Queue').sum()),
+            MRP=('Product', lambda x: (x == 'Measurement Queue').sum()),
+            CAD=('Product', lambda x: (x == 'Autocad Queue').sum()),
+            UA=('Product', lambda x: (x == 'Urban Angles').sum()),
+            VanBree=('Product', lambda x: (x == 'Van Bree Media').sum()),
+            SQM=('SQM', 'sum')
+        ).reset_index()
+        
+        st.dataframe(team_sum.sort_values(by='Orders', ascending=False), width="stretch", hide_index=True)
+        
+        st.markdown("<br>", unsafe_allow_html=True)
+        
+        # ২. আর্টিস্ট সামারি টেবিল (সব কলাম এবং ২০টি রো এর পর স্ক্রলবার সহ)
+        st.markdown("""
+            <div style="background:#f8fafc; padding:10px; border-radius:8px; border-left:5px solid #8b5cf6; margin-bottom:15px;">
+                <h5 style="margin:0; font-weight:bold; color: #0f172a;"> Performance Breakdown Section (Artist Summary)</h5>
+            </div>
+        """, unsafe_allow_html=True)
+        
+        artist_brk = df.groupby(['Name', 'Team', 'Shift']).agg(
+            Order=('Ticket ID', 'count'), 
+            Time=('Time', 'sum'), 
+            Rework=('Job Type', lambda x: (x == 'Rework').sum()),
+            FP=('Product', lambda x: (x == 'Floorplan Queue').sum()),
+            MRP=('Product', lambda x: (x == 'Measurement Queue').sum()),
+            UA=('Product', lambda x: (x == 'Urban Angles').sum()),
+            CAD=('Product', lambda x: (x == 'Autocad Queue').sum()),
+            VanBree=('Product', lambda x: (x == 'Van Bree Media').sum()),
+            SQM=('SQM', 'sum'),
+            days=('date', 'nunique')
+        ).reset_index()
+        
+        # Idle Time ক্যালকুলেশন
+        artist_brk['Idle'] = (artist_brk['days'] * 400) - artist_brk['Time']
+        artist_brk['Idle'] = artist_brk['Idle'].apply(lambda x: max(0, x))
+        
+        # ২০টি রো এর জন্য হাইট ৭৫০ এবং টেক্সট ডার্ক করার কনফিগারেশন
+        st.dataframe(
+            artist_brk.sort_values(by='Order', ascending=False), 
+            width="stretch", 
+            hide_index=True, 
+            height=750 # এখানে ২০টি রো এর পর স্ক্রলবার আসবে
+        )
 
         with tab3:
             u_names = sorted(df['Name'].unique().tolist())
@@ -399,7 +538,7 @@ try:
                         # কিছুই সিলেক্ট না থাকলে এই গাইডটি দেখাবে
                         st.info("**Instruction:** Click exactly on a dot in the chart above to see the RT Link button here.")
             st.markdown("---")
-            st.subheader(f"📋 Artist Performance Detail ")
+            st.subheader(f" Artist Performance Detail ")
             
             # আর্টিস্টের ডাটা কপি করা
             log_df = a_df.copy()
@@ -460,8 +599,13 @@ try:
             </style>
         """, unsafe_allow_html=True)
 
-        # ১. হেডার
-        st.markdown('<div class="compact-header"><h2 style="margin:0;"> Intelligence Hub</h2><p style="margin:0; opacity:0.8;">Performance Dashboard</p></div>', unsafe_allow_html=True)
+        # Monthly Summary-র জন্য নতুন লাইট হেডার
+        st.markdown("""
+            <div class="premium-header-light">
+                <h2> Intelligence Hub</h2>
+                <p>Monthly Performance Summary • Performance Dashboard</p>
+            </div>
+        """, unsafe_allow_html=True)
 
         # ২. লিডারবোর্ড এবং ফিল্টার
         top_col1, top_col2 = st.columns([1.5, 1])
@@ -475,7 +619,7 @@ try:
             st.plotly_chart(fig_top_bar, use_container_width=True)
 
         with top_col2:
-            st.markdown("##### ⚙️ Selection & Controls")
+            st.markdown("#####  Selection & Controls")
             l_role = st.selectbox("Identify Role", ["ARTIST", "QC"], index=0 if l_type_sum=="ARTIST" else 1)
             names_list = sorted(df_summary[df_summary[col_role].str.strip().str.upper() == l_role]['USER NAME ALL'].unique().tolist())
             a_sel = st.selectbox(f"Choose {l_role}", names_list, key="sum_a_v24")
@@ -576,9 +720,9 @@ try:
     # --- ৬. ট্র্যাকিং সিস্টেম পেজ ---
     elif page == "Tracking System":
         st.markdown(f"""
-            <div class="dashboard-header-premium">
-                <h2 style='margin:0; color: white;'>🛠️ {selected_month} Performance Tracking</h2>
-                <p style='margin:0; opacity:0.8; color: white; font-size: 13px;'>Data Cleaning & Efficiency Analysis</p>
+            <div class="premium-header-light">
+                <h2> {selected_month} Performance Tracking</h2>
+                <p>Data Cleaning & Productivity Analysis • Compliance Monitoring</p>
             </div>
         """, unsafe_allow_html=True)
 
@@ -589,7 +733,7 @@ try:
         if 'selected_ticket' not in st.session_state:
             st.session_state.selected_ticket = None
 
-        t_tab1, t_tab2, t_tab3 = st.tabs(["⚡ Short In Progress", "⏳ Spending More Time", "📊 High Time vs SQM"])
+        t_tab1, t_tab2, t_tab3 = st.tabs([" Short In Progress", " Spending More Time", " High Time vs SQM"])
         cols_to_show = ['Ticket ID', 'RT Link', 'Name', 'Time', 'SQM', 'Floor', 'Labels', 'Product', 'Team']
 
         # --- ড্রপডাউন লিস্টসমূহ ---
@@ -620,7 +764,7 @@ try:
 
         # --- ট্যাব ১: Short In Progress ---
         with t_tab1:
-            st.info("💡 টিপস: টেবিলের রো সিলেক্ট করলে নিচের বক্সে আইডি অটোমেটিক বসে যাবে।")
+            st.info(" Tip: Selecting a table row will automatically populate the ID in the box below.")
             sip_mask = (((tdf['Employee Type'] == 'QC') & (tdf['Time'] < 2)) | 
                         ((tdf['Employee Type'] == 'Artist') & (
                             ((tdf['Product'] == 'Floorplan Queue') & (tdf['Time'] <= 15)) | 
@@ -635,7 +779,7 @@ try:
                 st.session_state.selected_ticket = sip_df.iloc[event.selection.rows[0]]['Ticket ID']
 
             st.markdown("---")
-            with st.expander("📝 Action: Add to Shortfall Sheet", expanded=True):
+            with st.expander(" Action: Add to Shortfall Sheet", expanded=True):
                 with st.form("sip_form"):
                     t_list = list(sip_df['Ticket ID'].unique())
                     default_idx = t_list.index(st.session_state.selected_ticket) if st.session_state.selected_ticket in t_list else 0
@@ -667,7 +811,7 @@ try:
             if event_smt and event_smt.selection.rows:
                 st.session_state.selected_ticket = smt_df.iloc[event_smt.selection.rows[0]]['Ticket ID']
 
-            with st.expander("📝 Action: Report High Time", expanded=True):
+            with st.expander(" Action: Report High Time", expanded=True):
                 with st.form("smt_form"):
                     s_list = list(smt_df['Ticket ID'].unique())
                     s_idx = s_list.index(st.session_state.selected_ticket) if st.session_state.selected_ticket in s_list else 0
@@ -695,7 +839,7 @@ try:
             if event_hts and event_hts.selection.rows:
                 st.session_state.selected_ticket = hts_df.iloc[event_hts.selection.rows[0]]['Ticket ID']
 
-            with st.expander("📝 Action: Report SMT (Time vs SQM)", expanded=True):
+            with st.expander(" Action: Report SMT (Time vs SQM)", expanded=True):
                 with st.form("hts_form"):
                     h_list = list(hts_df['Ticket ID'].unique())
                     h_idx = h_list.index(st.session_state.selected_ticket) if st.session_state.selected_ticket in h_list else 0
